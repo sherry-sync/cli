@@ -2,7 +2,7 @@ package main
 
 import (
 	flag "github.com/jessevdk/go-flags"
-	"sherry/cli/config"
+	"sherry/shr/config"
 )
 
 var parser = flag.NewParser(&defaultFlags, flag.Default)

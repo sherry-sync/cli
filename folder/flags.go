@@ -2,8 +2,8 @@ package folder
 
 import (
 	flag "github.com/jessevdk/go-flags"
-	"sherry/cli/config"
-	"sherry/cli/helpers"
+	"sherry/shr/config"
+	"sherry/shr/helpers"
 )
 
 var CommandGroupName = "folder"

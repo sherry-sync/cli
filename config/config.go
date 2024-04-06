@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"sherry/cli/constants"
-	"sherry/cli/helpers"
+	"sherry/shr/constants"
+	"sherry/shr/helpers"
 )
 
 type Source struct {

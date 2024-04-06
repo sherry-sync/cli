@@ -3,7 +3,7 @@ package auth
 import (
 	"github.com/erikgeiser/promptkit/textinput"
 	"regexp"
-	"sherry/cli/helpers"
+	"sherry/shr/helpers"
 )
 
 type UserCredentials = struct {
@@ -21,13 +21,14 @@ func isWordValidator(input string) error {
 	return nil
 }
 
-func getUserInfo(user string, password string) UserCredentials {
-	input := textinput.New("Local profile name")
-	input.Placeholder = "default"
-	input.Validate = isWordValidator
-	input.InitialValue = "default"
-	profileName, _ := input.RunPrompt()
-
+func getUserInfo(profileName string, user string, password string) UserCredentials {
+	if profileName == "" {
+		input := textinput.New("Local profile name")
+		input.Placeholder = "default"
+		input.Validate = isWordValidator
+		input.InitialValue = "default"
+		profileName, _ = input.RunPrompt()
+	}
 	if user == "" {
 		input := textinput.New("Username")
 		input.Validate = isWordValidator
@@ -41,13 +42,13 @@ func getUserInfo(user string, password string) UserCredentials {
 	return UserCredentials{profileName, user, password}
 }
 
-func RegisterUser(user string, password string) {
-	info := getUserInfo(user, password)
+func RegisterUser(profileName string, user string, password string) {
+	info := getUserInfo(profileName, user, password)
 	helpers.PrintJson(info)
 }
 
-func LoginUser(user string, password string) {
-	info := getUserInfo(user, password)
+func LoginUser(profileName string, user string, password string) {
+	info := getUserInfo(profileName, user, password)
 	helpers.PrintJson(info)
 }
 

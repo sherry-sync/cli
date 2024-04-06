@@ -2,9 +2,9 @@ package main
 
 import (
 	flag "github.com/jessevdk/go-flags"
-	"sherry/cli/auth"
-	"sherry/cli/config"
-	"sherry/cli/folder"
+	"sherry/shr/auth"
+	"sherry/shr/config"
+	"sherry/shr/folder"
 )
 
 var defaultFlags struct {

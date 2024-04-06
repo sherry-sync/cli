@@ -1,4 +1,4 @@
-module sherry/cli
+module sherry/shr
 
 go 1.21.6
 
