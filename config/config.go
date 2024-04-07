@@ -21,6 +21,8 @@ type Source struct {
 type Watcher struct {
 	Source    string `json:"source"`
 	LocalPath string `json:"localPath"`
+	HashesId  string `json:"hashesId"`
+	UserId    string `json:"userId"`
 }
 
 type Config struct {

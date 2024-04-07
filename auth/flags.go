@@ -9,9 +9,9 @@ import (
 var CommandGroupName = "auth"
 var Flags struct {
 	Register bool   `long:"register" short:"r" description:"Register new user"`
+	List     bool   `long:"list" short:"l" description:"List authorized users"`
 	User     string `long:"user" short:"u" description:"Username"`
 	Password string `long:"password" short:"p" description:"User password"`
-	Profile  string `long:"profile" description:"Local profile name"`
 	Default  string `long:"default" short:"d" description:"Get/Set default user" default:"-" default-mask:"-"`
 }
 
@@ -30,7 +30,7 @@ func ApplyCommand(cmd *flag.Command, config config.Config) {
 	}
 
 	if Flags.Register {
-		RegisterUser(Flags.Profile, Flags.User, Flags.Password)
+		RegisterUser(Flags.User, Flags.Password)
 		return
 	}
 	if Flags.Default != "-" {
@@ -38,5 +38,5 @@ func ApplyCommand(cmd *flag.Command, config config.Config) {
 		return
 	}
 
-	LoginUser(Flags.Profile, Flags.User, Flags.Password)
+	LoginUser(Flags.User, Flags.Password)
 }
