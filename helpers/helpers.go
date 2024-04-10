@@ -9,6 +9,11 @@ import (
 
 func PrintErr(err string) {
 	_, _ = fmt.Fprintf(os.Stderr, err)
+	_, _ = fmt.Fprintf(os.Stderr, "\n")
+}
+
+func PrintMessage(msg string) {
+	fmt.Println(msg)
 }
 
 func PrintJson(data interface{}) {

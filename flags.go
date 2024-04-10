@@ -3,7 +3,6 @@ package main
 import (
 	flag "github.com/jessevdk/go-flags"
 	"sherry/shr/auth"
-	"sherry/shr/config"
 	"sherry/shr/folder"
 )
 
@@ -16,7 +15,7 @@ func initCommand(cmd *flag.Command) {
 	folder.InitCommands(cmd)
 }
 
-func applyCommand(cmd *flag.Command, c config.Config) {
-	auth.ApplyCommand(cmd, c)
-	folder.ApplyCommands(cmd, c)
+func applyCommand(cmd *flag.Command) {
+	auth.ApplyCommand(cmd)
+	folder.ApplyCommands(cmd)
 }

@@ -24,11 +24,10 @@ func InitCommands(cmd *flag.Command) {
 	)
 }
 
-func ApplyCommands(cmd *flag.Command, config config.Config) {
+func ApplyCommands(cmd *flag.Command) {
 	if cmd.Active.Name != CommandGroupName {
 		return
 	}
-	println("Folder command")
 	helpers.PrintJson(Flags)
-	helpers.PrintJson(config)
+	helpers.PrintJson(config.GetConfig())
 }

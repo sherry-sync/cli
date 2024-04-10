@@ -16,9 +16,9 @@ func main() {
 		return
 	}
 
-	c := config.ReadConfig(string(defaultFlags.ConfigPath))
-	if c == nil {
+	c := config.SetupConfig(string(defaultFlags.ConfigPath))
+	if c != nil {
 		return
 	}
-	applyCommand(parser.Command, *c)
+	applyCommand(parser.Command)
 }

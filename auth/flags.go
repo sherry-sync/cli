@@ -10,9 +10,10 @@ var CommandGroupName = "auth"
 var Flags struct {
 	Register bool   `long:"register" short:"r" description:"Register new user"`
 	List     bool   `long:"list" short:"l" description:"List authorized users"`
-	User     string `long:"user" short:"u" description:"Username"`
+	User     string `long:"username" short:"u" description:"Username"`
+	Email    string `long:"email" short:"e" description:"User email"`
 	Password string `long:"password" short:"p" description:"User password"`
-	Default  string `long:"default" short:"d" description:"Get/Set default user" default:"-" default-mask:"-"`
+	Default  string `long:"default" short:"d" description:"Set default user or get (--default=)" default:"-" default-mask:"-"`
 }
 
 func InitCommand(cmd *flag.Command) {
@@ -24,19 +25,27 @@ func InitCommand(cmd *flag.Command) {
 	)
 }
 
-func ApplyCommand(cmd *flag.Command, config config.Config) {
+func ApplyCommand(cmd *flag.Command) {
 	if cmd.Active.Name != CommandGroupName {
 		return
 	}
 
+	shouldCommit := false
 	if Flags.Register {
-		RegisterUser(Flags.User, Flags.Password)
-		return
-	}
-	if Flags.Default != "-" {
-		SetDefaultUser(Flags.Default)
-		return
+		shouldCommit = RegisterUser(Flags.Email, Flags.Password, Flags.User)
+	} else if Flags.Default != "-" {
+		if Flags.Default == "" {
+			shouldCommit = PrintDefaultUser()
+		} else {
+			shouldCommit = SetDefaultUser(Flags.Default)
+		}
+	} else if Flags.List {
+		shouldCommit = PrintUsers()
+	} else {
+		shouldCommit = LoginUser(Flags.Email, Flags.Password)
 	}
 
-	LoginUser(Flags.User, Flags.Password)
+	if shouldCommit {
+		config.CommitAuth()
+	}
 }
