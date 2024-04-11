@@ -108,6 +108,10 @@ func validateResponse(res string, err error) (string, error) {
 	return res, nil
 }
 
+func getUserString(user config.Credentials) string {
+	return fmt.Sprintf("%s(%s)", user.Username, user.Email)
+}
+
 func RegisterUser(email string, password string, user string) bool {
 	info := getUserInfo(true, email, password, user)
 
@@ -128,16 +132,7 @@ func RegisterUser(email string, password string, user string) bool {
 
 	helpers.PrintMessage("User created successfully")
 
-	if !LoginUser(createdUser.Email, info.Password) {
-		return false
-	}
-
-	if config.GetAuthConfig().Default == "" {
-		helpers.PrintMessage("It is the only user, setting it as default...")
-		SetDefaultUser(info.Username)
-	}
-
-	return true
+	return LoginUser(createdUser.Email, info.Password)
 }
 
 func LoginUser(email string, password string) bool {
@@ -156,6 +151,12 @@ func LoginUser(email string, password string) bool {
 
 	authConfig := config.GetAuthConfig()
 	authConfig.Sources[authResponse.Id] = authResponse
+
+	if authConfig.Default == "" {
+		helpers.PrintMessage("It is the only user, setting it as default...")
+		SetDefaultUser(info.Username)
+	}
+
 	return true
 }
 
@@ -182,7 +183,7 @@ func SetDefaultUser(user string) bool {
 
 	authConfig.Default = credentials.Id
 
-	helpers.PrintMessage(fmt.Sprintf("User %s set as default", credentials.Username))
+	helpers.PrintMessage(fmt.Sprintf("User %s set as default", getUserString(*credentials)))
 
 	return true
 }
@@ -196,7 +197,7 @@ func PrintDefaultUser() bool {
 
 	for _, u := range authConfig.Sources {
 		if u.Id == authConfig.Default {
-			helpers.PrintMessage(fmt.Sprintf("Default user: %s", u.Username))
+			helpers.PrintMessage(fmt.Sprintf("Default user: %s", getUserString(u)))
 			return false
 		}
 	}
@@ -213,7 +214,7 @@ func PrintUsers() bool {
 		if u.Id == authConfig.Default {
 			isDefault = "*"
 		}
-		helpers.PrintMessage(fmt.Sprintf("%s %s", isDefault, u.Username))
+		helpers.PrintMessage(fmt.Sprintf("%s %s", isDefault, getUserString(u)))
 	}
 
 	return false
