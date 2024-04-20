@@ -34,7 +34,7 @@ type Config struct {
 }
 
 type Credentials struct {
-	Id           string `json:"id"`
+	UserId       string `json:"userId"`
 	Email        string `json:"email"`
 	Username     string `json:"username"`
 	AccessToken  string `json:"accessToken"`

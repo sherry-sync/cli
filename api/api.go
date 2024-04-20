@@ -15,6 +15,7 @@ func getUrl(route string) string {
 	base, err := url.Parse(config.GetConfig().ApiUrl)
 	if err != nil {
 		helpers.PrintErr("Can't parse API URL")
+		return ""
 	}
 	base.Path = path.Join(base.Path, route)
 	return base.String()

@@ -150,11 +150,11 @@ func LoginUser(email string, password string) bool {
 	err = json.Unmarshal([]byte(res), &authResponse)
 
 	authConfig := config.GetAuthConfig()
-	authConfig.Sources[authResponse.Id] = authResponse
+	authConfig.Sources[authResponse.UserId] = authResponse
 
 	if authConfig.Default == "" {
 		helpers.PrintMessage("It is the only user, setting it as default...")
-		SetDefaultUser(info.Username)
+		SetDefaultUser(authResponse.Username)
 	}
 
 	return true
@@ -176,12 +176,12 @@ func SetDefaultUser(user string) bool {
 		return false
 	}
 
-	if authConfig.Default == credentials.Id {
+	if authConfig.Default == credentials.UserId {
 		helpers.PrintErr("User is already default")
 		return false
 	}
 
-	authConfig.Default = credentials.Id
+	authConfig.Default = credentials.UserId
 
 	helpers.PrintMessage(fmt.Sprintf("User %s set as default", getUserString(*credentials)))
 
@@ -196,7 +196,7 @@ func PrintDefaultUser() bool {
 	}
 
 	for _, u := range authConfig.Sources {
-		if u.Id == authConfig.Default {
+		if u.UserId == authConfig.Default {
 			helpers.PrintMessage(fmt.Sprintf("Default user: %s", getUserString(u)))
 			return false
 		}
@@ -211,7 +211,7 @@ func PrintUsers() bool {
 	helpers.PrintMessage("* - default user\n")
 	for _, u := range authConfig.Sources {
 		isDefault := " "
-		if u.Id == authConfig.Default {
+		if u.UserId == authConfig.Default {
 			isDefault = "*"
 		}
 		helpers.PrintMessage(fmt.Sprintf("%s %s", isDefault, getUserString(u)))
