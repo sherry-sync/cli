@@ -157,6 +157,8 @@ func LoginUser(email string, password string) bool {
 		SetDefaultUser(authResponse.Username)
 	}
 
+	helpers.PrintMessage("User was successfully logged in")
+
 	return true
 }
 
