@@ -8,11 +8,17 @@ import (
 
 var CommandGroupName = "folder"
 var Flags struct {
-	User   string            `long:"user" short:"u" description:"Use specific user profile for operation (Default profile will be used if no specified)"`
-	Path   flag.Filename     `long:"path" short:"p" description:"Specify local path for operation"`
-	Create bool              `long:"create" short:"c" description:"Create shared folder"`
-	Get    bool              `long:"get" short:"g" description:"Get shared folder"`
-	Set    map[string]string `long:"set" short:"s" description:"Set folder settings"`
+	Path flag.Filename     `long:"path" short:"p" description:"Specify local path for operation"`
+	User string            `long:"user" short:"u" description:"Use specific user profile for operation (Default profile will be used if no specified)"`
+	Set  map[string]string `long:"set" short:"s" description:"Set folder settings"`
+
+	Create bool   `long:"create" short:"c" description:"Create shared folder"`
+	Name   string `long:"name" short:"n" description:"Specify shared folder name"`
+	Yes    bool   `long:"yes" short:"y" description:"Skip confirmation and use default values where possible"`
+
+	Get bool `long:"get" short:"g" description:"Get shared folder"`
+
+	Display bool `long:"display" short:"d" description:"Display shared folder shearing info"`
 }
 
 func InitCommands(cmd *flag.Command) {

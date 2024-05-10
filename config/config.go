@@ -12,7 +12,9 @@ import (
 
 type Source struct {
 	Id               string   `json:"id"`
+	Name             string   `json:"name"`
 	Access           string   `json:"access"`
+	AllowDir         bool     `json:"allowDir"`
 	MaxFileSize      uint64   `json:"maxFileSize"`
 	MaxDirSize       uint64   `json:"maxDirSize"`
 	AllowedFileNames []string `json:"allowedFileNames"`

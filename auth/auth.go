@@ -3,13 +3,9 @@ package auth
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/dlclark/regexp2"
-	"github.com/erikgeiser/promptkit/textinput"
-	"net/mail"
 	"sherry/shr/api"
 	"sherry/shr/config"
 	"sherry/shr/helpers"
-	"strings"
 )
 
 type UserCredentials = struct {
@@ -18,66 +14,29 @@ type UserCredentials = struct {
 	Password string `json:"password"`
 }
 
-type ErrorResponse = struct {
-	Message    []string `json:"message"`
-	StatusCode int      `json:"statusCode"`
-}
-
 type SuccessRegistrationResponse = struct {
 	UserId   string `json:"userId"`
 	Email    string `json:"email"`
 	Username string `json:"username"`
 }
 
-var isWordRegex = regexp2.MustCompile(`^\w+$`, 0).MatchString
-var isPasswordRegex = regexp2.MustCompile(`(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{6,}`, 0).MatchString
-
-func match(regex func(s string) (bool, error), input string) bool {
-	match, _ := regex(input)
-	return match
-}
-
-func isWordValidator(input string) error {
-	if input != "" && !match(isWordRegex, input) {
-		return textinput.ErrInputValidation
-	}
-	return nil
-}
-
-func isEmailValidator(input string) error {
-	_, err := mail.ParseAddress(input)
-	if err != nil {
-		return textinput.ErrInputValidation
-	}
-	return nil
-}
-
-func isValidPassword(input string) error {
-	if input != "" && !match(isPasswordRegex, input) {
-		return textinput.ErrInputValidation
-	}
-	return nil
-}
-
 func getUserInfo(register bool, email string, password string, user string) UserCredentials {
-	if email == "" {
-		input := textinput.New("Email")
-		input.Validate = isEmailValidator
-		email, _ = input.RunPrompt()
+	email = helpers.Input("Email", email, helpers.IsEmailValidator, "", false)
+	if register {
+		user = helpers.Input("Username", user, helpers.IsWordValidator, "", false)
 	}
-	if register && user == "" {
-		input := textinput.New("Username")
-		input.Validate = isWordValidator
-		user, _ = input.RunPrompt()
+	password = helpers.Input(
+		"Password",
+		password,
+		helpers.IsPasswordValidator,
+		"At least 6 letters long, one Capital letter, one lowercase letter, and one number",
+		true,
+	)
+	return UserCredentials{
+		Email:    email,
+		Username: user,
+		Password: password,
 	}
-	if password == "" {
-		input := textinput.New("Password")
-		input.Placeholder = "At least 6 letters long, one Capital letter, one lowercase letter, and one number"
-		input.Validate = isValidPassword
-		input.Hidden = true
-		password, _ = input.RunPrompt()
-	}
-	return UserCredentials{Username: user, Email: email, Password: password}
 }
 
 func checkUserExists(email string, user string) bool {
@@ -89,23 +48,6 @@ func checkUserExists(email string, user string) bool {
 		}
 	}
 	return false
-}
-
-func validateResponse(res string, err error) (string, error) {
-	if err != nil {
-		if res != "" {
-			var resErr ErrorResponse
-			err := json.Unmarshal([]byte(res), &resErr)
-			if err != nil {
-				helpers.PrintErr(res)
-			}
-			helpers.PrintErr(strings.Join(resErr.Message, "\n"))
-		} else {
-			helpers.PrintErr(err.Error())
-		}
-		return "", err
-	}
-	return res, nil
 }
 
 func getUserString(user config.Credentials) string {
@@ -122,8 +64,8 @@ func RegisterUser(email string, password string, user string) bool {
 	helpers.PrintMessage("Creating user...")
 
 	body, _ := json.Marshal(info)
-	res, err := api.Post("auth/sign-up", body)
-	if _, err := validateResponse(res, err); err != nil {
+	res, err := api.Post("auth/sign-up", body, "")
+	if _, err := helpers.ValidateResponse(res, err); err != nil {
 		return false
 	}
 
@@ -141,8 +83,8 @@ func LoginUser(email string, password string) bool {
 	helpers.PrintMessage("Authorizing...")
 
 	body, _ := json.Marshal(map[string]string{"email": info.Email, "password": info.Password})
-	res, err := api.Post("auth/sign-in", body)
-	if _, err := validateResponse(res, err); err != nil {
+	res, err := api.Post("auth/sign-in", body, "")
+	if _, err := helpers.ValidateResponse(res, err); err != nil {
 		return false
 	}
 
@@ -162,16 +104,26 @@ func LoginUser(email string, password string) bool {
 	return true
 }
 
+func FindUserByUsername(username string, withDefault bool) *config.Credentials {
+	authConfig := config.GetAuthConfig()
+	if username == "" && withDefault {
+		username = authConfig.Sources[authConfig.Default].Username
+	}
+	if username == "" {
+		return nil
+	}
+	for _, u := range authConfig.Sources {
+		if u.Username == username {
+			return &u
+		}
+	}
+	return nil
+}
+
 func SetDefaultUser(user string) bool {
 	authConfig := config.GetAuthConfig()
 
-	var credentials *config.Credentials = nil
-	for _, u := range authConfig.Sources {
-		if u.Username == user {
-			credentials = &u
-			break
-		}
-	}
+	var credentials = FindUserByUsername(user, false)
 
 	if credentials == nil {
 		helpers.PrintErr("User not found")
