@@ -2,15 +2,15 @@ package folder
 
 import (
 	flag "github.com/jessevdk/go-flags"
-	"sherry/shr/config"
 	"sherry/shr/helpers"
 )
 
 var CommandGroupName = "folder"
 var Flags struct {
-	Path flag.Filename     `long:"path" short:"p" description:"Specify local path for operation"`
-	User string            `long:"user" short:"u" description:"Use specific user profile for operation (Default profile will be used if no specified)"`
-	Set  map[string]string `long:"set" short:"s" description:"Set folder settings"`
+	Path flag.Filename `long:"path" short:"p" description:"Specify local path for operation"`
+	User string        `long:"user" short:"u" description:"Use specific user profile for operation (Default profile will be used if no specified)"`
+
+	Set map[string]string `long:"set" short:"s" description:"Set folder settings"`
 
 	Create bool   `long:"create" short:"c" description:"Create shared folder"`
 	Name   string `long:"name" short:"n" description:"Specify shared folder name"`
@@ -34,6 +34,17 @@ func ApplyCommands(cmd *flag.Command) {
 	if cmd.Active.Name != CommandGroupName {
 		return
 	}
-	helpers.PrintJson(Flags)
-	helpers.PrintJson(config.GetConfig())
+
+	helpers.WithCommit(func() bool {
+		if Flags.Create {
+			return CreateSharedFolder(Flags.User, Flags.Yes, string(Flags.Path), Flags.Name, Flags.Set)
+		} else if Flags.Get {
+			return GetSharedFolder(Flags.User, Flags.Yes, string(Flags.Path), Flags.Name)
+		} else if Flags.Display {
+			return DisplaySharedFolder(Flags.User, Flags.Name)
+		} else if len(Flags.Set) > 0 {
+			return UpdateSharedFolder(Flags.User, Flags.Name, Flags.Set)
+		}
+		return false
+	})
 }

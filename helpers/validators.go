@@ -12,6 +12,8 @@ import (
 
 var isPasswordRegex = regexp2.MustCompile(`(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{6,}`, 0).MatchString
 var isWordRegex = regexp2.MustCompile(`^\w+$`, 0).MatchString
+var isIdRegex = regexp2.MustCompile(`^([a-zA-Z0-9]+-)+[a-zA-Z0-9]+$`, 0).MatchString
+var isUsernameFolder = regexp2.MustCompile(`^\w+:\w+$`, 0).MatchString
 
 func match(regex func(s string) (bool, error), input string) bool {
 	match, _ := regex(input)
@@ -20,6 +22,20 @@ func match(regex func(s string) (bool, error), input string) bool {
 
 func IsWordValidator(input string) error {
 	if input != "" && !match(isWordRegex, input) {
+		return textinput.ErrInputValidation
+	}
+	return nil
+}
+
+func IsUsernameFolder(input string) error {
+	if input != "" && !match(isUsernameFolder, input) {
+		return textinput.ErrInputValidation
+	}
+	return nil
+}
+
+func IsUsernameFolderOrId(input string) error {
+	if input != "" && (!match(isIdRegex, input) || !match(isUsernameFolder, input)) {
 		return textinput.ErrInputValidation
 	}
 	return nil

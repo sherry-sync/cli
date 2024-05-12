@@ -120,6 +120,13 @@ func FindUserByUsername(username string, withDefault bool) *config.Credentials {
 	return nil
 }
 
+func GetUserById(userId string) *config.Credentials {
+	if v, ok := config.GetAuthConfig().Sources[userId]; ok {
+		return &v
+	}
+	return nil
+}
+
 func SetDefaultUser(user string) bool {
 	authConfig := config.GetAuthConfig()
 

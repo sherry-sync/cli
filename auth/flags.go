@@ -2,7 +2,6 @@ package auth
 
 import (
 	flag "github.com/jessevdk/go-flags"
-	"sherry/shr/config"
 	"sherry/shr/helpers"
 )
 
@@ -30,22 +29,18 @@ func ApplyCommand(cmd *flag.Command) {
 		return
 	}
 
-	shouldCommit := false
-	if Flags.Register {
-		shouldCommit = RegisterUser(Flags.Email, Flags.Password, Flags.User)
-	} else if Flags.Default != "-" {
-		if Flags.Default == "" {
-			shouldCommit = PrintDefaultUser()
-		} else {
-			shouldCommit = SetDefaultUser(Flags.Default)
+	helpers.WithCommit(func() bool {
+		if Flags.Register {
+			return RegisterUser(Flags.Email, Flags.Password, Flags.User)
+		} else if Flags.Default != "-" {
+			if Flags.Default == "" {
+				return PrintDefaultUser()
+			} else {
+				return SetDefaultUser(Flags.Default)
+			}
+		} else if Flags.List {
+			return PrintUsers()
 		}
-	} else if Flags.List {
-		shouldCommit = PrintUsers()
-	} else {
-		shouldCommit = LoginUser(Flags.Email, Flags.Password)
-	}
-
-	if shouldCommit {
-		config.CommitAuth()
-	}
+		return LoginUser(Flags.Email, Flags.Password)
+	})
 }
