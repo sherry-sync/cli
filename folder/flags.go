@@ -33,9 +33,11 @@ type ShowOptions struct {
 }
 
 type SetOptions struct {
-	User string            `long:"user" short:"u" description:"Use specific user profile for operation (Default profile will be used if no specified)"`
-	Name string            `long:"name" short:"n" description:"Shared folder in format owner_username:folder_name or folder id"`
-	Set  map[string]string `positional-arg-name:"set"  description:"Set folder settings"`
+	User string `long:"user" short:"u" description:"Use specific user profile for operation (Default profile will be used if no specified)"`
+	Name string `long:"name" short:"n" description:"Shared folder in format owner_username:folder_name or folder id"`
+	Args struct {
+		Set map[string]string `positional-arg-name:"set"  description:"Set folder settings"`
+	} `positional-args:"yes" description:"Options to set"`
 }
 
 func ApplyCommands(cmd *flag.Command, options Options) {
@@ -52,7 +54,7 @@ func ApplyCommands(cmd *flag.Command, options Options) {
 		case "show":
 			return DisplaySharedFolder(options.Show.User, options.Show.Name)
 		case "set":
-			return UpdateSharedFolder(options.Set.User, options.Set.Name, options.Set.Set)
+			return UpdateSharedFolder(options.Set.User, options.Set.Name, options.Set.Args.Set)
 		default:
 			return false
 		}
