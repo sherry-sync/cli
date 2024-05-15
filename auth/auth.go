@@ -65,7 +65,7 @@ func RegisterUser(email string, password string, user string) bool {
 
 	body, _ := json.Marshal(info)
 	res, err := api.Post("auth/sign-up", body, "")
-	if _, err := helpers.ValidateResponse(res, err); err != nil {
+	if _, err := api.ValidateResponse(res, err); err != nil {
 		return false
 	}
 
@@ -84,7 +84,7 @@ func LoginUser(email string, password string) bool {
 
 	body, _ := json.Marshal(map[string]string{"email": info.Email, "password": info.Password})
 	res, err := api.Post("auth/sign-in", body, "")
-	if _, err := helpers.ValidateResponse(res, err); err != nil {
+	if _, err := api.ValidateResponse(res, err); err != nil {
 		return false
 	}
 

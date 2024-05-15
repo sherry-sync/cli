@@ -6,11 +6,8 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/erikgeiser/promptkit/confirmation"
 	"github.com/erikgeiser/promptkit/textinput"
-	flag "github.com/jessevdk/go-flags"
 	"os"
 	"regexp"
-	"sherry/shr/api"
-	"sherry/shr/config"
 	"strings"
 )
 
@@ -26,18 +23,6 @@ func PrintMessage(msg string) {
 func PrintJson(data interface{}) {
 	dataJson, _ := json.MarshalIndent(data, "", "  ")
 	fmt.Println(string(dataJson))
-}
-
-func AddCommand(cmd *flag.Command, command string, shortDescription string, longDescription string, data interface{}) {
-	if _, err := cmd.AddCommand(
-		command,
-		shortDescription,
-		longDescription,
-		data,
-	); err != nil {
-		fmt.Println(err)
-		return
-	}
 }
 
 func Input(name string, value string, validator func(string) error, placeholder string, hide bool) string {
@@ -120,30 +105,6 @@ func ParseValueArray(name string, value string, itemValidator func(string) error
 		values = append(values, v)
 	}
 	return values
-}
-
-func ValidateResponse(res string, err error) (string, error) {
-	if err != nil {
-		if res != "" {
-			var resErr api.ErrorResponse
-			err := json.Unmarshal([]byte(res), &resErr)
-			if err != nil {
-				PrintErr(res)
-			}
-			PrintErr(resErr.Message)
-		} else {
-			PrintErr(err.Error())
-		}
-		return "", err
-	}
-	return res, nil
-}
-
-func WithCommit(fn func() bool) {
-	if fn() {
-		config.CommitConfig()
-		config.CommitAuth()
-	}
 }
 
 func If[V any](condition bool, fn func(bool) V) V {

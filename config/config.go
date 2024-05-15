@@ -148,3 +148,10 @@ func CommitAuth() {
 		return
 	}
 }
+
+func WithCommit(fn func() bool) {
+	if fn() {
+		CommitConfig()
+		CommitAuth()
+	}
+}

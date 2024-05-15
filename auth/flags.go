@@ -2,45 +2,58 @@ package auth
 
 import (
 	flag "github.com/jessevdk/go-flags"
-	"sherry/shr/helpers"
+	"sherry/shr/config"
 )
 
-var CommandGroupName = "auth"
-var Flags struct {
-	Register bool   `long:"register" short:"r" description:"Register new user"`
-	List     bool   `long:"list" short:"l" description:"List authorized users"`
+type Options struct {
+	Register RegisterOptions `command:"register" description:"Register new user"`
+	Login    LoginOptions    `command:"login" description:"Authorize existing user"`
+	Default  DefaultOptions  `command:"default" description:"Display/Set default user"`
+	List     List            `command:"list" description:"List authorized users"`
+}
+
+type RegisterOptions struct {
 	User     string `long:"username" short:"u" description:"Username"`
 	Email    string `long:"email" short:"e" description:"User email"`
 	Password string `long:"password" short:"p" description:"User password"`
-	Default  string `long:"default" short:"d" description:"Set default user or get (--default=)" default:"-" default-mask:"-"`
 }
 
-func InitCommand(cmd *flag.Command) {
-	helpers.AddCommand(cmd,
-		CommandGroupName,
-		"Authorization",
-		"Manage your authorization",
-		&Flags,
-	)
+type LoginOptions struct {
+	Email    string `long:"email" short:"e" description:"User email"`
+	Password string `long:"password" short:"p" description:"User password"`
 }
 
-func ApplyCommand(cmd *flag.Command) {
-	if cmd.Active.Name != CommandGroupName {
+type DefaultOptions struct {
+	Args struct {
+		Username string `positional-arg-name:"username" description:"Optional username to set as default user"`
+	} `positional-args:"yes" description:"Optional username to set as default user"`
+}
+
+type List struct {
+}
+
+func ApplyCommand(cmd *flag.Command, data Options) {
+	if cmd.Active.Name != "auth" {
 		return
 	}
 
-	helpers.WithCommit(func() bool {
-		if Flags.Register {
-			return RegisterUser(Flags.Email, Flags.Password, Flags.User)
-		} else if Flags.Default != "-" {
-			if Flags.Default == "" {
+	config.WithCommit(func() bool {
+		switch cmd.Active.Active.Name {
+		case "register":
+			return RegisterUser(data.Register.Email, data.Register.Password, data.Register.User)
+		case "login":
+			return LoginUser(data.Login.Email, data.Login.Password)
+		case "list":
+			return PrintUsers()
+		case "default":
+			var username = data.Default.Args.Username
+			if username == "" {
 				return PrintDefaultUser()
 			} else {
-				return SetDefaultUser(Flags.Default)
+				return SetDefaultUser(username)
 			}
-		} else if Flags.List {
-			return PrintUsers()
+		default:
+			return false
 		}
-		return LoginUser(Flags.Email, Flags.Password)
 	})
 }

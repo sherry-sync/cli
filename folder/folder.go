@@ -158,7 +158,7 @@ func CreateSharedFolder(user string, yes bool, path string, name string, setting
 		AllowedFileTypes: folderInfo.Settings.AllowedFileTypes,
 	})
 	res, err := api.Post("/sherry", body, credentials.AccessToken)
-	if _, err := helpers.ValidateResponse(res, err); err != nil {
+	if _, err := api.ValidateResponse(res, err); err != nil {
 		return false
 	}
 
@@ -181,7 +181,7 @@ func GetSharedFolder(user string, yes bool, path string, name string) bool {
 	}
 
 	res, err := api.Get(fmt.Sprintf("/sherry/%s", folderParams.Name), credentials.AccessToken)
-	if _, err := helpers.ValidateResponse(res, err); err != nil {
+	if _, err := api.ValidateResponse(res, err); err != nil {
 		return false
 	}
 
@@ -244,7 +244,7 @@ func UpdateSharedFolder(user string, name string, settings map[string]string) bo
 		AllowedFileTypes: helpers.ParseValueArray("Allowed file types", settings["allowedFileTypes"], helpers.IsMimeTypeValidator, helpers.ToJoinedValues(source.AllowedFileTypes)),
 	})
 	res, err := api.Patch(fmt.Sprintf("/sherry/%s", source.Id), body, credentials.AccessToken)
-	if _, err := helpers.ValidateResponse(res, err); err != nil {
+	if _, err := api.ValidateResponse(res, err); err != nil {
 		return false
 	}
 

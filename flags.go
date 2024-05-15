@@ -6,16 +6,13 @@ import (
 	"sherry/shr/folder"
 )
 
-var defaultFlags struct {
-	ConfigPath flag.Filename `long:"config" short:"c" description:"Path to configuration folder"`
+type Options struct {
+	ConfigPath flag.Filename  `long:"config" short:"c" description:"Path to configuration folder"`
+	Auth       auth.Options   `command:"auth" description:"Authenticate"`
+	Folder     folder.Options `command:"folder" description:"Folder operations"`
 }
 
-func initCommand(cmd *flag.Command) {
-	auth.InitCommand(cmd)
-	folder.InitCommands(cmd)
-}
-
-func applyCommand(cmd *flag.Command) {
-	auth.ApplyCommand(cmd)
-	folder.ApplyCommands(cmd)
+func applyCommand(cmd *flag.Command, options Options) {
+	auth.ApplyCommand(cmd, options.Auth)
+	folder.ApplyCommands(cmd, options.Folder)
 }

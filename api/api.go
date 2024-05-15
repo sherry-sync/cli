@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -75,4 +76,21 @@ func Post(route string, body []byte, auth string) (string, error) {
 
 func Patch(route string, body []byte, auth string) (string, error) {
 	return authRequest(http.MethodPatch, route, bytes.NewBuffer(body), auth)
+}
+
+func ValidateResponse(res string, err error) (string, error) {
+	if err != nil {
+		if res != "" {
+			var resErr ErrorResponse
+			err := json.Unmarshal([]byte(res), &resErr)
+			if err != nil {
+				helpers.PrintErr(res)
+			}
+			helpers.PrintErr(resErr.Message)
+		} else {
+			helpers.PrintErr(err.Error())
+		}
+		return "", err
+	}
+	return res, nil
 }

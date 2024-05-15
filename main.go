@@ -5,20 +5,17 @@ import (
 	"sherry/shr/config"
 )
 
-var parser = flag.NewParser(&defaultFlags, flag.Default)
-
-func init() {
-	initCommand(parser.Command)
-}
-
 func main() {
+	var options Options
+	var parser = flag.NewParser(&options, flag.Default)
+
 	if _, err := parser.Parse(); err != nil {
 		return
 	}
 
-	c := config.SetupConfig(string(defaultFlags.ConfigPath))
+	c := config.SetupConfig(string(options.ConfigPath))
 	if c != nil {
 		return
 	}
-	applyCommand(parser.Command)
+	applyCommand(parser.Command, options)
 }
