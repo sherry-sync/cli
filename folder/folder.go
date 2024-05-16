@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/dustin/go-humanize"
+	"github.com/iancoleman/strcase"
 	"path"
 	"sherry/shr/api"
 	"sherry/shr/auth"
@@ -41,7 +42,19 @@ type Payload = struct {
 	AllowedFileTypes []string `json:"allowedFileTypes"`
 }
 
+func prepareSettings(settings map[string]string) map[string]string {
+	s := make(map[string]string)
+
+	for k, v := range settings {
+		s[strcase.ToLowerCamel(k)] = v
+	}
+
+	return s
+}
+
 func getFolderSettings(yes bool, settings map[string]string) SourceSettings {
+	settings = prepareSettings(settings)
+
 	if yes {
 		return SourceSettings{
 			AllowDir:         helpers.ParseBool("Allow directory", settings["allowDir"], constants.DefaultAllowDir),

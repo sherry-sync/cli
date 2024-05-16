@@ -23,8 +23,10 @@ type CreateOptions struct {
 type GetOptions struct {
 	Path flag.Filename `long:"path" short:"p" description:"Specify local path for operation"`
 	User string        `long:"user" short:"u" description:"Use specific user profile for operation (Default profile will be used if no specified)"`
-	Name string        `long:"name" short:"n" description:"Shared folder in format owner_username:folder_name or folder id"`
 	Yes  bool          `long:"yes" short:"y" description:"Skip confirmation and use default values where possible"`
+	Args struct {
+		Folder string `positional-arg-name:"folder"  description:"Shared folder in format owner_username:folder_name or folder id"`
+	} `positional-args:"yes" required:"yes" description:"Shared folder in format owner_username:folder_name or folder id"`
 }
 
 type ShowOptions struct {
@@ -50,7 +52,7 @@ func ApplyCommands(cmd *flag.Command, options Options) {
 		case "create":
 			return CreateSharedFolder(options.Create.User, options.Create.Yes, string(options.Create.Path), options.Create.Name, options.Create.Set)
 		case "get":
-			return GetSharedFolder(options.Get.User, options.Get.Yes, string(options.Get.Path), options.Get.Name)
+			return GetSharedFolder(options.Get.User, options.Get.Yes, string(options.Get.Path), options.Get.Args.Folder)
 		case "show":
 			return DisplaySharedFolder(options.Show.User, options.Show.Name)
 		case "set":

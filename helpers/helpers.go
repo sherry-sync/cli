@@ -31,10 +31,15 @@ func Input(name string, value string, validator func(string) error, placeholder 
 		input.Placeholder = placeholder
 		input.Validate = validator
 		input.Hidden = hide
-		value, _ = input.RunPrompt()
+		var e error
+		value, e = input.RunPrompt()
+		if e != nil {
+			PrintErr(e.Error())
+			os.Exit(1)
+		}
 	}
 	if validator(value) != nil {
-		PrintErr(fmt.Sprintf("Invalid %s", name))
+		PrintErr(fmt.Sprintf("Invalid %s: %s", name, value))
 		os.Exit(1)
 	}
 	return value
@@ -61,7 +66,11 @@ func ParseBool(name string, value string, def bool) bool {
 func Confirmation(name string, value string, def *bool) bool {
 	if value == "" {
 		input := confirmation.New(name, def)
-		decision, _ := input.RunPrompt()
+		decision, e := input.RunPrompt()
+		if e != nil {
+			PrintErr(e.Error())
+			os.Exit(1)
+		}
 		return decision
 	}
 	return ParseBool(name, value, false)
