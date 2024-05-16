@@ -9,7 +9,7 @@ type Options struct {
 	Create CreateOptions `command:"create" description:"Create shared folder"`
 	Get    GetOptions    `command:"get" description:"Get shared folder"`
 	Show   ShowOptions   `command:"show" description:"Display shared folder sharing info"`
-	Update SetOptions    `command:"update" description:"Set shared folder settings"`
+	Update UpdateOptions `command:"update" description:"Set shared folder settings"`
 }
 
 type CreateOptions struct {
@@ -34,7 +34,7 @@ type ShowOptions struct {
 	Name string `long:"name" short:"n" description:"Shared folder name"`
 }
 
-type SetOptions struct {
+type UpdateOptions struct {
 	User string            `long:"user" short:"u" description:"Use specific user profile for operation (Default profile will be used if no specified)"`
 	Name string            `long:"name" short:"n" description:"Shared folder name"`
 	Set  map[string]string `long:"set" short:"s" description:"Set folder settings"`
