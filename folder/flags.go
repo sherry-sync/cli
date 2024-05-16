@@ -9,7 +9,7 @@ type Options struct {
 	Create CreateOptions `command:"create" description:"Create shared folder"`
 	Get    GetOptions    `command:"get" description:"Get shared folder"`
 	Show   ShowOptions   `command:"show" description:"Display shared folder sharing info"`
-	Set    SetOptions    `command:"set" description:"Set shared folder settings"`
+	Update SetOptions    `command:"set" description:"Set shared folder settings"`
 }
 
 type CreateOptions struct {
@@ -35,11 +35,9 @@ type ShowOptions struct {
 }
 
 type SetOptions struct {
-	User string `long:"user" short:"u" description:"Use specific user profile for operation (Default profile will be used if no specified)"`
-	Name string `long:"name" short:"n" description:"Shared folder name"`
-	Args struct {
-		Set map[string]string `positional-arg-name:"set"  description:"Set folder settings"`
-	} `positional-args:"yes" required:"yes" description:"Options to set"`
+	User string            `long:"user" short:"u" description:"Use specific user profile for operation (Default profile will be used if no specified)"`
+	Name string            `long:"name" short:"n" description:"Shared folder name"`
+	Set  map[string]string `long:"set" short:"s" description:"Set folder settings"`
 }
 
 func ApplyCommands(cmd *flag.Command, options Options) {
@@ -56,7 +54,7 @@ func ApplyCommands(cmd *flag.Command, options Options) {
 		case "show":
 			return DisplaySharedFolder(options.Show.User, options.Show.Name)
 		case "set":
-			return UpdateSharedFolder(options.Set.User, options.Set.Name, options.Set.Args.Set)
+			return UpdateSharedFolder(options.Update.User, options.Update.Name, options.Update.Set)
 		default:
 			return false
 		}

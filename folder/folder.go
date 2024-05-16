@@ -249,6 +249,7 @@ func UpdateSharedFolder(user string, name string, settings map[string]string) bo
 		return false
 	}
 
+	settings = prepareSettings(settings)
 	body, _ := json.Marshal(Payload{
 		AllowDir:         helpers.ParseBool("Allow directory", settings["allowDir"], source.AllowDir),
 		MaxFileSize:      helpers.ParseDataSize("Max file size", settings["maxFileSize"], source.MaxFileSize, constants.MaxFileSize),
