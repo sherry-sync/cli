@@ -9,7 +9,7 @@ type Options struct {
 	Create CreateOptions `command:"create" description:"Create shared folder"`
 	Get    GetOptions    `command:"get" description:"Get shared folder"`
 	Show   ShowOptions   `command:"show" description:"Display shared folder sharing info"`
-	Update SetOptions    `command:"set" description:"Set shared folder settings"`
+	Update SetOptions    `command:"update" description:"Set shared folder settings"`
 }
 
 type CreateOptions struct {
