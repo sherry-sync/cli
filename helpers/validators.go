@@ -6,7 +6,6 @@ import (
 	"github.com/erikgeiser/promptkit/textinput"
 	"mime"
 	"net/mail"
-	"os"
 	"path/filepath"
 )
 
@@ -14,6 +13,10 @@ var isPasswordRegex = regexp2.MustCompile(`(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{6,}`,
 var isWordRegex = regexp2.MustCompile(`^\w+$`, 0).MatchString
 var isIdRegex = regexp2.MustCompile(`^([a-zA-Z0-9]+-)+[a-zA-Z0-9]+$`, 0).MatchString
 var isUsernameFolder = regexp2.MustCompile(`^\w+:\w+$`, 0).MatchString
+var isWindowsPathBanChar = regexp2.MustCompile(`[/<>:"\|?*\x00\x08\x0B\x0C\x0E-\x1F]`, 0).MatchString
+var isLinuxPathBanChar = regexp2.MustCompile(`[/\x00]`, 0).MatchString
+var isWindowsPathBanName = regexp2.MustCompile(`^(CON|PRN|AUX|NUL|COM1|COM2|COM3|COM4|COM5|COM6|COM7|COM8|COM9|LPT1|LPT2|LPT3|LPT4|LPT5|LPT6|LPT7|LPT8|LPT9)(\..*)?$`, regexp2.IgnoreCase).MatchString
+var isWindowsPathBanEnd = regexp2.MustCompile(`[. ]$`, 0).MatchString
 
 func match(regex func(s string) (bool, error), input string) bool {
 	match, _ := regex(input)
@@ -56,20 +59,33 @@ func IsPasswordValidator(input string) error {
 	return nil
 }
 
+func IsValidPathPart(input string) error {
+	if input == "" {
+		return nil
+	}
+	if match(isWindowsPathBanChar, input) {
+		return textinput.ErrInputValidation
+	}
+	if match(isLinuxPathBanChar, input) {
+		return textinput.ErrInputValidation
+	}
+	if match(isWindowsPathBanName, input) {
+		return textinput.ErrInputValidation
+	}
+	if match(isWindowsPathBanEnd, input) {
+		return textinput.ErrInputValidation
+	}
+	return nil
+}
+
 func IsPathValidator(input string) error {
-	// Check if file already exists
-	if _, err := os.Stat(input); err == nil {
-		return nil
+	for _, p := range GetPathParts(input) {
+		if IsValidPathPart(p) != nil {
+			return textinput.ErrInputValidation
+		}
 	}
 
-	// Attempt to create it
-	var d []byte
-	if err := os.WriteFile(input, d, 0644); err == nil {
-		os.Remove(input)
-		return nil
-	}
-
-	return textinput.ErrInputValidation
+	return nil
 }
 
 func IsGlobValidator(input string) error {

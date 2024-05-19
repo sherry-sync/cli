@@ -7,6 +7,7 @@ import (
 	"github.com/erikgeiser/promptkit/confirmation"
 	"github.com/erikgeiser/promptkit/textinput"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -142,4 +143,12 @@ func Find[K comparable, V any](it map[K]V, fn func(V) bool) (*V, *K) {
 		}
 	}
 	return nil, nil
+}
+
+func NormalizePath(path string) string {
+	return strings.ReplaceAll(filepath.Clean(path), "\\", "/")
+}
+
+func GetPathParts(path string) []string {
+	return strings.Split(NormalizePath(path), "/")
 }
