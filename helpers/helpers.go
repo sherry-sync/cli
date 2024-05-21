@@ -145,10 +145,44 @@ func Find[K comparable, V any](it map[K]V, fn func(V) bool) (*V, *K) {
 	return nil, nil
 }
 
+func FindIn[T any](ts []T, fn func(T) bool) *T {
+	for _, t := range ts {
+		if fn(t) {
+			return &t
+		}
+	}
+	return nil
+}
+
+func Map[T, U any](ts []T, f func(T) U) []U {
+	us := make([]U, len(ts))
+	for i := range ts {
+		us[i] = f(ts[i])
+	}
+	return us
+}
+
 func NormalizePath(path string) string {
 	return strings.ReplaceAll(filepath.Clean(path), "\\", "/")
 }
 
 func GetPathParts(path string) []string {
 	return strings.Split(NormalizePath(path), "/")
+}
+
+// IsChildPath accepts two normalized paths
+func IsChildPath(parent, child string) (bool, error) {
+	if parent == child {
+		return true, nil
+	}
+
+	// path-comparisons using filepath.Abs don't work reliably according to docs (no unique representation).
+	rel, err := filepath.Rel(parent, child)
+	if err != nil {
+		return false, err
+	}
+	if !strings.HasPrefix(rel, ".."+string(os.PathSeparator)) && rel != ".." {
+		return true, nil
+	}
+	return false, nil
 }

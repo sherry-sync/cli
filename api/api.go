@@ -94,3 +94,13 @@ func ValidateResponse(res string, err error) (string, error) {
 	}
 	return res, nil
 }
+
+func ParseResponse[T any](res string) (*T, error) {
+	var v T
+	if err := json.Unmarshal([]byte(res), &v); err != nil {
+		helpers.PrintErr("Can't parse response")
+		helpers.PrintErr(err.Error())
+		return nil, err
+	}
+	return &v, nil
+}

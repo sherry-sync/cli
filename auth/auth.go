@@ -1,18 +1,11 @@
 package auth
 
 import (
-	"encoding/json"
 	"fmt"
 	"sherry/shr/api"
 	"sherry/shr/config"
 	"sherry/shr/helpers"
 )
-
-type UserCredentials = struct {
-	Username string `json:"username"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
 
 type SuccessRegistrationResponse = struct {
 	UserId   string `json:"userId"`
@@ -20,7 +13,7 @@ type SuccessRegistrationResponse = struct {
 	Username string `json:"username"`
 }
 
-func getUserInfo(register bool, email string, password string, user string) UserCredentials {
+func getUserInfo(register bool, email string, password string, user string) api.PayloadUser {
 	email = helpers.Input("Email", email, helpers.IsEmailValidator, "", false)
 	if register {
 		user = helpers.Input("Username", user, helpers.IsWordValidator, "", false)
@@ -32,7 +25,7 @@ func getUserInfo(register bool, email string, password string, user string) User
 		"At least 6 letters long, one Capital letter, one lowercase letter, and one number",
 		true,
 	)
-	return UserCredentials{
+	return api.PayloadUser{
 		Email:    email,
 		Username: user,
 		Password: password,
@@ -63,14 +56,10 @@ func RegisterUser(email string, password string, user string) bool {
 
 	helpers.PrintMessage("Creating user...")
 
-	body, _ := json.Marshal(info)
-	res, err := api.Post("auth/sign-up", body, "")
-	if _, err := api.ValidateResponse(res, err); err != nil {
+	createdUser, err := api.UserRegister(info)
+	if err != nil {
 		return false
 	}
-
-	var createdUser SuccessRegistrationResponse
-	err = json.Unmarshal([]byte(res), &createdUser)
 
 	helpers.PrintMessage("User created successfully")
 
@@ -82,24 +71,29 @@ func LoginUser(email string, password string) bool {
 
 	helpers.PrintMessage("Authorizing...")
 
-	body, _ := json.Marshal(map[string]string{"email": info.Email, "password": info.Password})
-	res, err := api.Post("auth/sign-in", body, "")
-	if _, err := api.ValidateResponse(res, err); err != nil {
+	authResponse, err := api.UserLogin(api.PayloadLogin{
+		Email:    info.Email,
+		Password: info.Password,
+	})
+	if err != nil {
 		return false
 	}
 
-	var authResponse config.Credentials
-	err = json.Unmarshal([]byte(res), &authResponse)
-
 	authConfig := config.GetAuthConfig()
-	authConfig.Sources[authResponse.UserId] = authResponse
+	authConfig.Sources[authResponse.UserId] = config.Credentials{
+		UserId:       authResponse.UserId,
+		Email:        authResponse.Email,
+		Username:     authResponse.Username,
+		AccessToken:  authResponse.AccessToken,
+		RefreshToken: authResponse.RefreshToken,
+	}
+
+	helpers.PrintMessage("User was successfully logged in")
 
 	if authConfig.Default == "" {
 		helpers.PrintMessage("It is the only user, setting it as default...")
 		SetDefaultUser(authResponse.Username)
 	}
-
-	helpers.PrintMessage("User was successfully logged in")
 
 	return true
 }

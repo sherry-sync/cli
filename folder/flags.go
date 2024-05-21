@@ -10,6 +10,16 @@ type Options struct {
 	Get    GetOptions    `command:"get" description:"Get shared folder"`
 	Show   ShowOptions   `command:"show" description:"Display shared folder sharing info"`
 	Update UpdateOptions `command:"update" description:"Set shared folder settings"`
+	Access AccessOptions `command:"access" description:"Manage shared folder access"`
+}
+
+type AccessOptions struct {
+	User   string `long:"user" short:"u" description:"Use specific user profile for operation (Default profile will be used if no specified)"`
+	Name   string `long:"name" short:"n" description:"Specify shared folder name"`
+	Action string `long:"action" short:"a" description:"Specify action to perform (GRANT/REFUSE)"`
+	Args   struct {
+		Folder string `positional-arg-name:"user"  description:"Username or id of user to manage access for"`
+	} `positional-args:"yes" description:"Username or id of user to manage access for"`
 }
 
 type CreateOptions struct {
@@ -57,7 +67,7 @@ func ApplyCommands(cmd *flag.Command, options Options) {
 			return GetSharedFolder(options.Get.User, options.Get.Yes, string(options.Get.Path), options.Get.Args.Folder)
 		case "show":
 			return DisplaySharedFolder(options.Show.User, options.Show.Args.Name)
-		case "set":
+		case "update":
 			return UpdateSharedFolder(options.Update.User, options.Update.Args.Name, options.Update.Set)
 		default:
 			return false

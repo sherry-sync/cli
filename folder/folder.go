@@ -1,10 +1,10 @@
 package folder
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/dustin/go-humanize"
 	"github.com/iancoleman/strcase"
+	"os"
 	"path"
 	"sherry/shr/api"
 	"sherry/shr/auth"
@@ -12,6 +12,7 @@ import (
 	"sherry/shr/constants"
 	"sherry/shr/helpers"
 	"strings"
+	"time"
 )
 
 type SourceSettings struct {
@@ -40,6 +41,29 @@ type Payload = struct {
 	MaxDirSize       uint64   `json:"maxDirSize"`
 	AllowedFileNames []string `json:"allowedFileNames"`
 	AllowedFileTypes []string `json:"allowedFileTypes"`
+}
+
+type ResponseFolderAllowedFileNames = struct {
+	FileNameId string `json:"fileNameId"`
+	Name       string `json:"name"`
+	SherryId   string `json:"sherryId"`
+}
+
+type ResponseFolderAllowedFileTypes = struct {
+	FileTypeId string `json:"fileTypeId"`
+	Type       string `json:"type"`
+	SherryId   string `json:"sherryId"`
+}
+
+type ResponseFolder = struct {
+	SherryId         string                           `json:"sherryId"`
+	Name             string                           `json:"name"`
+	MaxFileSize      uint64                           `json:"maxFileSize"`
+	MaxDirSize       uint64                           `json:"maxDirSize"`
+	UserId           string                           `json:"userId"`
+	AllowDir         bool                             `json:"allowDir"`
+	AllowedFileTypes []ResponseFolderAllowedFileTypes `json:"allowedFileTypes"`
+	AllowedFileNames []ResponseFolderAllowedFileNames `json:"allowedFileNames"`
 }
 
 func prepareSettings(settings map[string]string) map[string]string {
@@ -160,20 +184,71 @@ func CreateSharedFolder(user string, yes bool, path string, name string, setting
 
 	folderInfo := getFolderInfo(yes, path, name, settings)
 
-	// TODO: Validate path
+	path = helpers.NormalizePath(folderInfo.Path)
 
-	body, _ := json.Marshal(Payload{
+	for _, w := range config.GetConfig().Watchers {
+		isChild, err := helpers.IsChildPath(path, helpers.NormalizePath(w.LocalPath))
+		if err != nil {
+			helpers.PrintErr("Error while checking path")
+			return false
+		}
+		if isChild {
+			helpers.PrintErr("Path is already being watched")
+			return false
+		}
+	}
+
+	stat, err := os.Stat(path)
+	if stat != nil && !stat.IsDir() {
+		helpers.PrintErr("Path is not a directory")
+		return false
+	}
+	if os.IsNotExist(err) {
+		err := os.MkdirAll(path, os.ModePerm)
+		if err != nil {
+			helpers.PrintErr("Can't create directory")
+			helpers.PrintErr(err.Error())
+			return false
+		}
+	}
+
+	response, err := api.FolderCreate(Payload{
 		Name:             folderInfo.Name,
 		AllowDir:         folderInfo.Settings.AllowDir,
 		MaxFileSize:      folderInfo.Settings.MaxFileSize,
 		MaxDirSize:       folderInfo.Settings.MaxDirSize,
 		AllowedFileNames: folderInfo.Settings.AllowedFileNames,
 		AllowedFileTypes: folderInfo.Settings.AllowedFileTypes,
-	})
-	res, err := api.Post("/sherry", body, credentials.AccessToken)
-	if _, err := api.ValidateResponse(res, err); err != nil {
+	}, credentials.AccessToken)
+	if err != nil {
 		return false
 	}
+
+	conf := config.GetConfig()
+	sourceId := fmt.Sprintf("%s@%s", credentials.UserId, response.SherryId)
+	conf.Sources[sourceId] = config.Source{
+		Id:          response.SherryId,
+		Name:        response.Name,
+		Access:      "write",
+		OwnerId:     response.UserId,
+		UserId:      credentials.UserId,
+		AllowDir:    response.AllowDir,
+		MaxFileSize: response.MaxFileSize,
+		MaxDirSize:  response.MaxDirSize,
+		AllowedFileNames: helpers.Map(response.AllowedFileNames, func(f ResponseFolderAllowedFileNames) string {
+			return f.Name
+		}),
+		AllowedFileTypes: helpers.Map(response.AllowedFileTypes, func(f ResponseFolderAllowedFileTypes) string {
+			return f.Type
+		}),
+	}
+	conf.Watchers = append(conf.Watchers, config.Watcher{
+		Source:    sourceId,
+		LocalPath: path,
+		HashesId:  fmt.Sprintf("%s_%s_%d", credentials.UserId, response.SherryId, time.Now().Unix()),
+		UserId:    credentials.UserId,
+		Complete:  false,
+	})
 
 	return true
 }
@@ -193,10 +268,38 @@ func GetSharedFolder(user string, yes bool, path string, name string) bool {
 		return false
 	}
 
-	res, err := api.Get(fmt.Sprintf("/sherry/%s", folderParams.Name), credentials.AccessToken)
-	if _, err := api.ValidateResponse(res, err); err != nil {
+	var folderId string
+	if helpers.IsUsernameFolder(folderParams.Name) == nil {
+		availableFolders, err := api.FolderGetAvailable(credentials.AccessToken)
+		if err != nil {
+			return false
+		}
+
+		args := strings.Split(folderParams.Name, ":")
+		folderName := args[1]
+		userData, err := api.UserFind(args[0], credentials.AccessToken)
+		if err != nil {
+			return false
+		}
+
+		source := helpers.FindIn(*availableFolders, func(f ResponseFolder) bool {
+			return f.Name == folderName && f.UserId == userData.UserId
+		})
+		if source == nil {
+			helpers.PrintErr("Folder is not available or not exists")
+			return false
+		}
+		folderId = source.SherryId
+	} else {
+		folderId = folderParams.Name
+	}
+
+	folder, err := api.FolderGet(folderId, credentials.AccessToken)
+	if err != nil {
 		return false
 	}
+
+	helpers.PrintJson(folder)
 
 	// TODO: Download files
 
@@ -241,28 +344,65 @@ func UpdateSharedFolder(user string, name string, settings map[string]string) bo
 		return false
 	}
 
-	source, _ := helpers.Find(config.GetConfig().Sources, func(source config.Source) bool {
-		return source.Name == name && source.OwnerId == credentials.UserId
+	availableFolders, err := api.FolderGetAvailable(credentials.AccessToken)
+	if err != nil {
+		return false
+	}
+
+	source := helpers.FindIn(*availableFolders, func(f ResponseFolder) bool {
+		return f.Name == name && f.UserId == credentials.UserId
 	})
 	if source == nil {
-		helpers.PrintErr("Source not found")
+		helpers.PrintErr("Folder is not available or not exists")
 		return false
 	}
 
-	settings = prepareSettings(settings)
-	body, _ := json.Marshal(Payload{
-		AllowDir:         helpers.ParseBool("Allow directory", settings["allowDir"], source.AllowDir),
-		MaxFileSize:      helpers.ParseDataSize("Max file size", settings["maxFileSize"], source.MaxFileSize, constants.MaxFileSize),
-		MaxDirSize:       helpers.ParseDataSize("Max directory size", settings["maxDirSize"], source.MaxDirSize, constants.MaxDirSize),
-		AllowedFileNames: helpers.ParseValueArray("Allowed file names", settings["allowedFileNames"], helpers.IsGlobValidator, helpers.ToJoinedValues(source.AllowedFileNames)),
-		AllowedFileTypes: helpers.ParseValueArray("Allowed file types", settings["allowedFileTypes"], helpers.IsMimeTypeValidator, helpers.ToJoinedValues(source.AllowedFileTypes)),
-	})
-	res, err := api.Patch(fmt.Sprintf("/sherry/%s", source.Id), body, credentials.AccessToken)
-	if _, err := api.ValidateResponse(res, err); err != nil {
+	response, err := api.FolderUpdate(source.SherryId, Payload{
+		AllowDir:    helpers.ParseBool("Allow directory", settings["allowDir"], source.AllowDir),
+		MaxFileSize: helpers.ParseDataSize("Max file size", settings["maxFileSize"], source.MaxFileSize, constants.MaxFileSize),
+		MaxDirSize:  helpers.ParseDataSize("Max directory size", settings["maxDirSize"], source.MaxDirSize, constants.MaxDirSize),
+		AllowedFileNames: helpers.ParseValueArray(
+			"Allowed file names",
+			settings["allowedFileNames"],
+			helpers.IsGlobValidator, helpers.ToJoinedValues(helpers.Map(source.AllowedFileNames, func(f ResponseFolderAllowedFileNames) string {
+				return f.Name
+			})),
+		),
+		AllowedFileTypes: helpers.ParseValueArray(
+			"Allowed file types",
+			settings["allowedFileTypes"],
+			helpers.IsMimeTypeValidator, helpers.ToJoinedValues(helpers.Map(source.AllowedFileTypes, func(f ResponseFolderAllowedFileTypes) string {
+				return f.Type
+			})),
+		),
+	}, credentials.AccessToken)
+	if err != nil {
 		return false
 	}
 
-	// TODO: update config
+	conf := config.GetConfig()
+	estSource := config.Source{
+		AllowDir:    response.AllowDir,
+		MaxFileSize: response.MaxFileSize,
+		MaxDirSize:  response.MaxDirSize,
+		AllowedFileNames: helpers.Map(response.AllowedFileNames, func(f ResponseFolderAllowedFileNames) string {
+			return f.Name
+		}),
+		AllowedFileTypes: helpers.Map(response.AllowedFileTypes, func(f ResponseFolderAllowedFileTypes) string {
+			return f.Type
+		}),
+	}
+	for _, s := range conf.Sources {
+		if s.Id != source.SherryId {
+			continue
+		}
+
+		s.AllowDir = estSource.AllowDir
+		s.MaxFileSize = estSource.MaxFileSize
+		s.MaxDirSize = estSource.MaxDirSize
+		s.AllowedFileNames = estSource.AllowedFileNames
+		s.AllowedFileTypes = estSource.AllowedFileTypes
+	}
 
 	return true
 }

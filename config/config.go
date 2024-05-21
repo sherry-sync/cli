@@ -28,6 +28,7 @@ type Watcher struct {
 	LocalPath string `json:"localPath"`
 	HashesId  string `json:"hashesId"`
 	UserId    string `json:"userId"`
+	Complete  bool   `json:"complete"`
 }
 
 type Config struct {
