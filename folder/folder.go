@@ -174,6 +174,39 @@ func getFolderParams(yes bool, p string, name string) Params {
 	}
 }
 
+func responseToSource(response *api.ResponseFolder, userId string) config.Source {
+	return config.Source{
+		Id:          response.SherryId,
+		Name:        response.Name,
+		Access:      "write", // TODO: update with folder permissions
+		OwnerId:     response.UserId,
+		UserId:      userId,
+		AllowDir:    response.AllowDir,
+		MaxFileSize: response.MaxFileSize,
+		MaxDirSize:  response.MaxDirSize,
+		AllowedFileNames: helpers.Map(response.AllowedFileNames, func(f ResponseFolderAllowedFileNames) string {
+			return f.Name
+		}),
+		AllowedFileTypes: helpers.Map(response.AllowedFileTypes, func(f ResponseFolderAllowedFileTypes) string {
+			return f.Type
+		}),
+	}
+}
+
+func generateHashId(userId, sherryId string) string {
+	return fmt.Sprintf("%s_%s_%d", userId, sherryId, time.Now().Unix())
+}
+
+func createWatcher(sourceId, userId, sherryId string, path string) config.Watcher {
+	return config.Watcher{
+		Source:    sourceId,
+		LocalPath: path,
+		HashesId:  generateHashId(userId, sherryId),
+		UserId:    userId,
+		Complete:  false,
+	}
+}
+
 func CreateSharedFolder(user string, yes bool, path string, name string, settings map[string]string) bool {
 	credentials := auth.FindUserByUsername(user, true)
 
@@ -226,29 +259,10 @@ func CreateSharedFolder(user string, yes bool, path string, name string, setting
 
 	conf := config.GetConfig()
 	sourceId := fmt.Sprintf("%s@%s", credentials.UserId, response.SherryId)
-	conf.Sources[sourceId] = config.Source{
-		Id:          response.SherryId,
-		Name:        response.Name,
-		Access:      "write",
-		OwnerId:     response.UserId,
-		UserId:      credentials.UserId,
-		AllowDir:    response.AllowDir,
-		MaxFileSize: response.MaxFileSize,
-		MaxDirSize:  response.MaxDirSize,
-		AllowedFileNames: helpers.Map(response.AllowedFileNames, func(f ResponseFolderAllowedFileNames) string {
-			return f.Name
-		}),
-		AllowedFileTypes: helpers.Map(response.AllowedFileTypes, func(f ResponseFolderAllowedFileTypes) string {
-			return f.Type
-		}),
-	}
-	conf.Watchers = append(conf.Watchers, config.Watcher{
-		Source:    sourceId,
-		LocalPath: path,
-		HashesId:  fmt.Sprintf("%s_%s_%d", credentials.UserId, response.SherryId, time.Now().Unix()),
-		UserId:    credentials.UserId,
-		Complete:  false,
-	})
+	conf.Sources[sourceId] = responseToSource(response, credentials.UserId)
+	conf.Watchers = append(conf.Watchers, createWatcher(sourceId, credentials.UserId, response.SherryId, path))
+
+	helpers.PrintMessage(fmt.Sprintf("Sherry is created and watching at %s", path))
 
 	return true
 }
@@ -301,7 +315,7 @@ func GetSharedFolder(user string, yes bool, path string, name string) bool {
 
 	helpers.PrintJson(folder)
 
-	// TODO: Download files
+	// TODO: Create watcher with correct permissions
 
 	return true
 }
@@ -309,28 +323,26 @@ func GetSharedFolder(user string, yes bool, path string, name string) bool {
 func DisplaySharedFolder(user string, name string) bool {
 	name = helpers.Input("Folder name", name, helpers.IsWordValidator, "", false)
 
-	credentials := auth.FindUserByUsername(user, false)
-	if credentials == nil && user != "" {
+	credentials := auth.FindUserByUsername(user, true)
+	if credentials == nil {
 		helpers.PrintErr("User not found")
 		return false
 	}
 
-	sources := config.GetConfig().Sources
+	availableFolders, err := api.FolderGetAvailable(credentials.AccessToken)
+	if err != nil {
+		return false
+	}
 
-	for _, s := range sources {
-		if user != "" && s.Name != name {
+	for _, s := range *availableFolders {
+		if s.Name != name {
 			continue
 		}
-		helpers.PrintMessage(fmt.Sprintf("Folder: %s", s.Name))
-		helpers.PrintMessage(fmt.Sprintf("User: %s", helpers.If(credentials != nil, func(c bool) string {
-			if c {
-				return credentials.Username
-			} else {
-				return auth.GetUserById(s.UserId).Username
-			}
-		})))
+		source := responseToSource(&s, credentials.UserId)
+
+		helpers.PrintMessage(fmt.Sprintf("Folder: %s", source.Name))
 		helpers.PrintMessage("\n")
-		helpers.PrintJson(s)
+		helpers.PrintJson(source)
 	}
 
 	return false
@@ -381,17 +393,7 @@ func UpdateSharedFolder(user string, name string, settings map[string]string) bo
 	}
 
 	conf := config.GetConfig()
-	estSource := config.Source{
-		AllowDir:    response.AllowDir,
-		MaxFileSize: response.MaxFileSize,
-		MaxDirSize:  response.MaxDirSize,
-		AllowedFileNames: helpers.Map(response.AllowedFileNames, func(f ResponseFolderAllowedFileNames) string {
-			return f.Name
-		}),
-		AllowedFileTypes: helpers.Map(response.AllowedFileTypes, func(f ResponseFolderAllowedFileTypes) string {
-			return f.Type
-		}),
-	}
+	estSource := responseToSource(response, credentials.UserId)
 	for _, s := range conf.Sources {
 		if s.Id != source.SherryId {
 			continue
@@ -403,6 +405,53 @@ func UpdateSharedFolder(user string, name string, settings map[string]string) bo
 		s.AllowedFileNames = estSource.AllowedFileNames
 		s.AllowedFileTypes = estSource.AllowedFileTypes
 	}
+
+	helpers.PrintMessage(fmt.Sprintf("Folder was updated:"))
+	helpers.PrintJson(estSource)
+
+	return true
+}
+
+func UnwatchSharedFolder(path string, yes bool, force bool) bool {
+	path = helpers.NormalizePath(path)
+
+	var watcher *config.Watcher
+	for _, w := range config.GetConfig().Watchers {
+		wPath := helpers.NormalizePath(w.LocalPath)
+		isChild, err := helpers.IsChildPath(path, wPath)
+		if err != nil {
+			helpers.PrintErr("Error while checking path")
+			return false
+		}
+		if isChild && wPath != path {
+			f := false
+			if yes || helpers.Confirmation("Looks like it is not th root of shared directory, unwatch anyway?", "", &f) {
+				watcher = &w
+			} else {
+				helpers.PrintErr("Aborting...")
+				return false
+			}
+		} else {
+			watcher = &w
+		}
+	}
+
+	if watcher == nil {
+		helpers.PrintErr("No watcher found")
+		return false
+	}
+
+	conf := config.GetConfig()
+
+	newWatchers := make([]config.Watcher, 0)
+	for _, w := range conf.Watchers {
+		if w.LocalPath != watcher.LocalPath {
+			newWatchers = append(newWatchers, w)
+		}
+	}
+	conf.Watchers = newWatchers
+
+	// TODO: Add force option
 
 	return true
 }

@@ -6,20 +6,35 @@ import (
 )
 
 type Options struct {
-	Create CreateOptions `command:"create" description:"Create shared folder"`
-	Get    GetOptions    `command:"get" description:"Get shared folder"`
-	Show   ShowOptions   `command:"show" description:"Display shared folder sharing info"`
-	Update UpdateOptions `command:"update" description:"Set shared folder settings"`
-	Access AccessOptions `command:"access" description:"Manage shared folder access"`
+	Create      CreateOptions     `command:"create" description:"Create shared folder"`
+	Get         GetOptions        `command:"get" description:"Get shared folder"`
+	Show        ShowOptions       `command:"show" description:"Display shared folder sharing info"`
+	Update      UpdateOptions     `command:"update" description:"Set shared folder settings"`
+	Permissions PermissionOptions `command:"permissions" description:"Manage shared folder access"`
+	List        ListOptions       `command:"list" description:"List folders"`
+	Unwatch     UnwatchOptions    `command:"unwatch" description:"Unwatch folder"`
 }
 
-type AccessOptions struct {
-	User   string `long:"user" short:"u" description:"Use specific user profile for operation (Default profile will be used if no specified)"`
-	Name   string `long:"name" short:"n" description:"Specify shared folder name"`
-	Action string `long:"action" short:"a" description:"Specify action to perform (GRANT/REFUSE)"`
-	Args   struct {
-		Folder string `positional-arg-name:"user"  description:"Username or id of user to manage access for"`
-	} `positional-args:"yes" description:"Username or id of user to manage access for"`
+type UnwatchOptions struct {
+	Yes   bool `long:"yes" short:"y" description:"Skip confirmation and use default values where possible"`
+	Force bool `long:"force" short:"f" description:"Also disable folder shearing"`
+	Args  struct {
+		Path flag.Filename `positional-arg-name:"path"  description:"Shared folder path"`
+	} `positional-args:"yes" description:"Shared folder name"`
+}
+
+type ListOptions struct {
+	User      string `long:"user" short:"u" description:"Choose specific user"`
+	Available bool   `long:"available" short:"a" description:"Show all available folders"`
+}
+
+type PermissionOptions struct {
+	User     string `long:"user" short:"u" description:"Use specific user profile for operation (Default profile will be used if no specified)"`
+	Target   string `long:"target" short:"t" description:"Username or id of user to manage access for"`
+	ReadOnly string `long:"readOnly" description:"Is target read only (Yes/No, True/False, 1/0)"`
+	Args     struct {
+		Name string `positional-arg-name:"folder"  description:"Shared folder name"`
+	} `positional-args:"yes" required:"yes" description:"Shared folder name"`
 }
 
 type CreateOptions struct {
@@ -69,6 +84,8 @@ func ApplyCommands(cmd *flag.Command, options Options) {
 			return DisplaySharedFolder(options.Show.User, options.Show.Args.Name)
 		case "update":
 			return UpdateSharedFolder(options.Update.User, options.Update.Args.Name, options.Update.Set)
+		case "unwatch":
+			return UnwatchSharedFolder(string(options.Unwatch.Args.Path), options.Unwatch.Yes, options.Unwatch.Force)
 		default:
 			return false
 		}
