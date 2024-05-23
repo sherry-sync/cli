@@ -43,7 +43,7 @@ func checkUserExists(email string, user string) bool {
 	return false
 }
 
-func getUserString(user config.Credentials) string {
+func GetUserString(user config.Credentials) string {
 	return fmt.Sprintf("%s(%s)", user.Username, user.Email)
 }
 
@@ -138,7 +138,7 @@ func SetDefaultUser(user string) bool {
 
 	authConfig.Default = credentials.UserId
 
-	helpers.PrintMessage(fmt.Sprintf("User %s set as default", getUserString(*credentials)))
+	helpers.PrintMessage(fmt.Sprintf("User %s set as default", GetUserString(*credentials)))
 
 	return true
 }
@@ -152,7 +152,7 @@ func PrintDefaultUser() bool {
 
 	for _, u := range authConfig.Sources {
 		if u.UserId == authConfig.Default {
-			helpers.PrintMessage(fmt.Sprintf("Default user: %s", getUserString(u)))
+			helpers.PrintMessage(fmt.Sprintf("Default user: %s", GetUserString(u)))
 			return false
 		}
 	}
@@ -169,7 +169,7 @@ func PrintUsers() bool {
 		if u.UserId == authConfig.Default {
 			isDefault = "*"
 		}
-		helpers.PrintMessage(fmt.Sprintf("%s %s", isDefault, getUserString(u)))
+		helpers.PrintMessage(fmt.Sprintf("%s %s", isDefault, GetUserString(u)))
 	}
 
 	return false

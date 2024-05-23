@@ -147,7 +147,7 @@ func getFolderSettings(yes bool, settings map[string]string) SourceSettings {
 
 func getFolderInfo(yes bool, path string, name string, settings map[string]string) Info {
 	return Info{
-		Name: helpers.IfLazy(yes, func() string {
+		Name: helpers.If(yes, func() string {
 			return name
 		}, func() string {
 			return helpers.Input("Name", name, helpers.IsWordValidator, "", false)
@@ -161,7 +161,7 @@ func getFolderParams(yes bool, p string, name string) Params {
 	name = helpers.Input("Folder name in format owner_username:folder_name or id", name, helpers.IsUsernameFolderOrId, "", false)
 
 	if yes && p == "" {
-		p = path.Join(".", helpers.IfLazy(helpers.IsUsernameFolder(name) == nil, func() string {
+		p = path.Join(".", helpers.If(helpers.IsUsernameFolder(name) == nil, func() string {
 			return strings.Split(name, ":")[1]
 		}, func() string {
 			return name
@@ -205,6 +205,10 @@ func createWatcher(sourceId, userId, sherryId string, path string) config.Watche
 		UserId:    userId,
 		Complete:  false,
 	}
+}
+
+func generateSourceId(userId, sherryId string) string {
+	return fmt.Sprintf("%s@%s", userId, sherryId)
 }
 
 func CreateSharedFolder(user string, yes bool, path string, name string, settings map[string]string) bool {
@@ -258,7 +262,7 @@ func CreateSharedFolder(user string, yes bool, path string, name string, setting
 	}
 
 	conf := config.GetConfig()
-	sourceId := fmt.Sprintf("%s@%s", credentials.UserId, response.SherryId)
+	sourceId := generateSourceId(credentials.UserId, response.SherryId)
 	conf.Sources[sourceId] = responseToSource(response, credentials.UserId)
 	conf.Watchers = append(conf.Watchers, createWatcher(sourceId, credentials.UserId, response.SherryId, path))
 
@@ -296,7 +300,7 @@ func GetSharedFolder(user string, yes bool, path string, name string) bool {
 			return false
 		}
 
-		source := helpers.FindIn(*availableFolders, func(f ResponseFolder) bool {
+		source := helpers.Find(*availableFolders, func(f ResponseFolder) bool {
 			return f.Name == folderName && f.UserId == userData.UserId
 		})
 		if source == nil {
@@ -361,7 +365,7 @@ func UpdateSharedFolder(user string, name string, settings map[string]string) bo
 		return false
 	}
 
-	source := helpers.FindIn(*availableFolders, func(f ResponseFolder) bool {
+	source := helpers.Find(*availableFolders, func(f ResponseFolder) bool {
 		return f.Name == name && f.UserId == credentials.UserId
 	})
 	if source == nil {
@@ -443,7 +447,7 @@ func UnwatchSharedFolder(path string, yes bool, force bool) bool {
 
 	conf := config.GetConfig()
 
-	newWatchers := make([]config.Watcher, 0)
+	var newWatchers []config.Watcher
 	for _, w := range conf.Watchers {
 		if w.LocalPath != watcher.LocalPath {
 			newWatchers = append(newWatchers, w)
@@ -454,4 +458,65 @@ func UnwatchSharedFolder(path string, yes bool, force bool) bool {
 	// TODO: Add force option
 
 	return true
+}
+
+func ListSharedFolders(user string, available bool) bool {
+	var users []config.Credentials
+	if user == "" {
+		for _, c := range config.GetAuthConfig().Sources {
+			users = append(users, c)
+		}
+	} else {
+		credentials := auth.FindUserByUsername(user, false)
+		if credentials == nil {
+			helpers.PrintErr("User not found")
+			return false
+		}
+		users = append(users, *credentials)
+	}
+
+	for _, u := range users {
+		type Map struct {
+			watchers []config.Watcher
+			source   config.Source
+		}
+		var sources []config.Source
+		if available {
+			availableFolders, err := api.FolderGetAvailable(u.AccessToken)
+			if err != nil {
+				return false
+			}
+			for _, s := range *availableFolders {
+				sources = append(sources, responseToSource(&s, u.UserId))
+			}
+		} else {
+			for _, s := range config.GetConfig().Sources {
+				if s.UserId == u.UserId {
+					sources = append(sources, s)
+				}
+			}
+		}
+		helpers.PrintMessage(fmt.Sprintf("Folders for user: %s", auth.GetUserString(u)))
+		helpers.PrintMessage("")
+		for _, s := range sources {
+			helpers.PrintMessage(fmt.Sprintf("Source: %s", s.Name))
+			helpers.PrintJson(s)
+			sourceKey := generateSourceId(u.UserId, s.Id)
+			watchers := helpers.Filter(config.GetConfig().Watchers, func(watcher config.Watcher) bool {
+				return sourceKey == watcher.Source
+			})
+			if len(watchers) != 0 {
+				helpers.PrintMessage("Watching in these paths:")
+				for _, w := range watchers {
+					helpers.PrintMessage(w.LocalPath)
+				}
+			} else {
+				helpers.PrintMessage("No currently watching paths")
+			}
+			helpers.PrintMessage("")
+		}
+		helpers.PrintMessage("")
+	}
+
+	return false
 }

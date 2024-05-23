@@ -117,11 +117,7 @@ func ParseValueArray(name string, value string, itemValidator func(string) error
 	return values
 }
 
-func If[V any](condition bool, fn func(bool) V) V {
-	return fn(condition)
-}
-
-func IfLazy[V any](condition bool, yes func() V, no func() V) V {
+func If[V any](condition bool, yes func() V, no func() V) V {
 	if condition {
 		return yes()
 	} else {
@@ -136,16 +132,7 @@ func IsExists(path string) bool {
 	return true
 }
 
-func Find[K comparable, V any](it map[K]V, fn func(V) bool) (*V, *K) {
-	for k, v := range it {
-		if fn(v) {
-			return &v, &k
-		}
-	}
-	return nil, nil
-}
-
-func FindIn[T any](ts []T, fn func(T) bool) *T {
+func Find[T any](ts []T, fn func(T) bool) *T {
 	for _, t := range ts {
 		if fn(t) {
 			return &t
@@ -185,4 +172,14 @@ func IsChildPath(parent, child string) (bool, error) {
 		return true, nil
 	}
 	return false, nil
+}
+
+func Filter[T any](ts []T, fn func(T) bool) []T {
+	var res []T
+	for _, v := range ts {
+		if fn(v) {
+			res = append(res, v)
+		}
+	}
+	return res
 }

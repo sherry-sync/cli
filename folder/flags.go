@@ -86,6 +86,8 @@ func ApplyCommands(cmd *flag.Command, options Options) {
 			return UpdateSharedFolder(options.Update.User, options.Update.Args.Name, options.Update.Set)
 		case "unwatch":
 			return UnwatchSharedFolder(string(options.Unwatch.Args.Path), options.Unwatch.Yes, options.Unwatch.Force)
+		case "list":
+			return ListSharedFolders(options.List.User, options.List.Available)
 		default:
 			return false
 		}

@@ -51,7 +51,13 @@ func parse(res *http.Response) (string, error) {
 }
 
 func authRequest(method string, route string, body *bytes.Buffer, auth string) (string, error) {
-	req, err := http.NewRequest(method, getUrl(route), body)
+	var req *http.Request
+	var err error
+	if body == nil {
+		req, err = http.NewRequest(method, getUrl(route), nil)
+	} else {
+		req, err = http.NewRequest(method, getUrl(route), body)
+	}
 	if err != nil {
 		return "", err
 	}
