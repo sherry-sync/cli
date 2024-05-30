@@ -3,6 +3,7 @@ package folder
 import (
 	"fmt"
 	"github.com/dustin/go-humanize"
+	"github.com/erikgeiser/promptkit/confirmation"
 	"github.com/iancoleman/strcase"
 	"os"
 	"path"
@@ -32,38 +33,6 @@ type Info = struct {
 type Params = struct {
 	Name string `json:"name"`
 	Path string `json:"path"`
-}
-
-type Payload = struct {
-	Name             string   `json:"name"`
-	AllowDir         bool     `json:"allowDir"`
-	MaxFileSize      uint64   `json:"maxFileSize"`
-	MaxDirSize       uint64   `json:"maxDirSize"`
-	AllowedFileNames []string `json:"allowedFileNames"`
-	AllowedFileTypes []string `json:"allowedFileTypes"`
-}
-
-type ResponseFolderAllowedFileNames = struct {
-	FileNameId string `json:"fileNameId"`
-	Name       string `json:"name"`
-	SherryId   string `json:"sherryId"`
-}
-
-type ResponseFolderAllowedFileTypes = struct {
-	FileTypeId string `json:"fileTypeId"`
-	Type       string `json:"type"`
-	SherryId   string `json:"sherryId"`
-}
-
-type ResponseFolder = struct {
-	SherryId         string                           `json:"sherryId"`
-	Name             string                           `json:"name"`
-	MaxFileSize      uint64                           `json:"maxFileSize"`
-	MaxDirSize       uint64                           `json:"maxDirSize"`
-	UserId           string                           `json:"userId"`
-	AllowDir         bool                             `json:"allowDir"`
-	AllowedFileTypes []ResponseFolderAllowedFileTypes `json:"allowedFileTypes"`
-	AllowedFileNames []ResponseFolderAllowedFileNames `json:"allowedFileNames"`
 }
 
 func prepareSettings(settings map[string]string) map[string]string {
@@ -174,20 +143,30 @@ func getFolderParams(yes bool, p string, name string) Params {
 	}
 }
 
+func getAccessType(response *api.ResponseFolder, userId string) string {
+	permission := helpers.Find(response.SherryPermission, func(p api.SherryPermission) bool {
+		return p.UserId == userId
+	})
+	if permission == nil {
+		panic("User access invalid folder")
+	}
+	return permission.Role
+}
+
 func responseToSource(response *api.ResponseFolder, userId string) config.Source {
 	return config.Source{
 		Id:          response.SherryId,
 		Name:        response.Name,
-		Access:      "write", // TODO: update with folder permissions
+		Access:      getAccessType(response, userId),
 		OwnerId:     response.UserId,
 		UserId:      userId,
 		AllowDir:    response.AllowDir,
 		MaxFileSize: response.MaxFileSize,
 		MaxDirSize:  response.MaxDirSize,
-		AllowedFileNames: helpers.Map(response.AllowedFileNames, func(f ResponseFolderAllowedFileNames) string {
+		AllowedFileNames: helpers.Map(response.AllowedFileNames, func(f api.ResponseFolderAllowedFileNames) string {
 			return f.Name
 		}),
-		AllowedFileTypes: helpers.Map(response.AllowedFileTypes, func(f ResponseFolderAllowedFileTypes) string {
+		AllowedFileTypes: helpers.Map(response.AllowedFileTypes, func(f api.ResponseFolderAllowedFileTypes) string {
 			return f.Type
 		}),
 	}
@@ -249,13 +228,13 @@ func CreateSharedFolder(user string, yes bool, path string, name string, setting
 		}
 	}
 
-	response, err := api.FolderCreate(Payload{
+	response, err := api.FolderCreate(api.PayloadFolder{
 		Name:             folderInfo.Name,
 		AllowDir:         folderInfo.Settings.AllowDir,
 		MaxFileSize:      folderInfo.Settings.MaxFileSize,
 		MaxDirSize:       folderInfo.Settings.MaxDirSize,
-		AllowedFileNames: folderInfo.Settings.AllowedFileNames,
-		AllowedFileTypes: folderInfo.Settings.AllowedFileTypes,
+		AllowedFileNames: helpers.EmptyIfNull(folderInfo.Settings.AllowedFileNames),
+		AllowedFileTypes: helpers.EmptyIfNull(folderInfo.Settings.AllowedFileTypes),
 	}, credentials.AccessToken)
 	if err != nil {
 		return false
@@ -295,12 +274,12 @@ func GetSharedFolder(user string, yes bool, path string, name string) bool {
 
 		args := strings.Split(folderParams.Name, ":")
 		folderName := args[1]
-		userData, err := api.UserFind(args[0], credentials.AccessToken)
+		userData, err := api.UserFindByUsername(args[0], credentials.AccessToken)
 		if err != nil {
 			return false
 		}
 
-		source := helpers.Find(*availableFolders, func(f ResponseFolder) bool {
+		source := helpers.Find(*availableFolders, func(f api.ResponseFolder) bool {
 			return f.Name == folderName && f.UserId == userData.UserId
 		})
 		if source == nil {
@@ -343,10 +322,20 @@ func DisplaySharedFolder(user string, name string) bool {
 			continue
 		}
 		source := responseToSource(&s, credentials.UserId)
-
+		owner, e := api.UserFindById(s.UserId, credentials.AccessToken)
+		if e != nil {
+			return false
+		}
 		helpers.PrintMessage(fmt.Sprintf("Folder: %s", source.Name))
-		helpers.PrintMessage("\n")
 		helpers.PrintJson(source)
+		helpers.PrintMessage(fmt.Sprintf(
+			"Clone using: %s",
+			helpers.WithColor([]int{helpers.ConsoleFgDarkGreen, helpers.ConsoleUnderline}, fmt.Sprintf("shr folder get %s:%s", owner.Username, source.Name)),
+		))
+		helpers.PrintMessage(fmt.Sprintf(
+			"         or: %s",
+			helpers.WithColor([]int{helpers.ConsoleFgDarkGreen, helpers.ConsoleUnderline}, fmt.Sprintf("shr folder get %s", source.Id)),
+		))
 	}
 
 	return false
@@ -365,7 +354,7 @@ func UpdateSharedFolder(user string, name string, settings map[string]string) bo
 		return false
 	}
 
-	source := helpers.Find(*availableFolders, func(f ResponseFolder) bool {
+	source := helpers.Find(*availableFolders, func(f api.ResponseFolder) bool {
 		return f.Name == name && f.UserId == credentials.UserId
 	})
 	if source == nil {
@@ -373,21 +362,22 @@ func UpdateSharedFolder(user string, name string, settings map[string]string) bo
 		return false
 	}
 
-	response, err := api.FolderUpdate(source.SherryId, Payload{
+	response, err := api.FolderUpdate(source.SherryId, api.PayloadFolder{
+		Name:        source.Name,
 		AllowDir:    helpers.ParseBool("Allow directory", settings["allowDir"], source.AllowDir),
 		MaxFileSize: helpers.ParseDataSize("Max file size", settings["maxFileSize"], source.MaxFileSize, constants.MaxFileSize),
 		MaxDirSize:  helpers.ParseDataSize("Max directory size", settings["maxDirSize"], source.MaxDirSize, constants.MaxDirSize),
 		AllowedFileNames: helpers.ParseValueArray(
 			"Allowed file names",
 			settings["allowedFileNames"],
-			helpers.IsGlobValidator, helpers.ToJoinedValues(helpers.Map(source.AllowedFileNames, func(f ResponseFolderAllowedFileNames) string {
+			helpers.IsGlobValidator, helpers.ToJoinedValues(helpers.Map(source.AllowedFileNames, func(f api.ResponseFolderAllowedFileNames) string {
 				return f.Name
 			})),
 		),
 		AllowedFileTypes: helpers.ParseValueArray(
 			"Allowed file types",
 			settings["allowedFileTypes"],
-			helpers.IsMimeTypeValidator, helpers.ToJoinedValues(helpers.Map(source.AllowedFileTypes, func(f ResponseFolderAllowedFileTypes) string {
+			helpers.IsMimeTypeValidator, helpers.ToJoinedValues(helpers.Map(source.AllowedFileTypes, func(f api.ResponseFolderAllowedFileTypes) string {
 				return f.Type
 			})),
 		),
@@ -428,8 +418,7 @@ func UnwatchSharedFolder(path string, yes bool, force bool) bool {
 			return false
 		}
 		if isChild && wPath != path {
-			f := false
-			if yes || helpers.Confirmation("Looks like it is not th root of shared directory, unwatch anyway?", "", &f) {
+			if yes || helpers.Confirmation("Looks like it is not th root of shared directory, unwatch anyway?", "", confirmation.No) {
 				watcher = &w
 			} else {
 				helpers.PrintErr("Aborting...")
@@ -455,7 +444,24 @@ func UnwatchSharedFolder(path string, yes bool, force bool) bool {
 	}
 	conf.Watchers = newWatchers
 
-	// TODO: Add force option
+	if force {
+		source := conf.Sources[watcher.Source]
+		if source.UserId != source.OwnerId {
+			if yes || helpers.Confirmation("You are not the owner of the folder and can't delete it, unwatch anyway?", "", confirmation.Undecided) {
+				return true
+			} else {
+				helpers.PrintErr("Aborting...")
+				return false
+			}
+		}
+
+		credentials := auth.GetUserById(watcher.UserId)
+		e := api.FolderDelete(conf.Sources[watcher.Source].Id, credentials.AccessToken)
+		if e != nil {
+			helpers.PrintErr("Failed to delete folder, aborting...")
+			return false
+		}
+	}
 
 	return true
 }
@@ -508,7 +514,7 @@ func ListSharedFolders(user string, available bool) bool {
 			if len(watchers) != 0 {
 				helpers.PrintMessage("Watching in these paths:")
 				for _, w := range watchers {
-					helpers.PrintMessage(w.LocalPath)
+					helpers.PrintMessage(fmt.Sprintf("  %s", w.LocalPath))
 				}
 			} else {
 				helpers.PrintMessage("No currently watching paths")

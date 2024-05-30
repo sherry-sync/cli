@@ -11,11 +11,17 @@ import (
 	"path"
 	"sherry/shr/config"
 	"sherry/shr/helpers"
+	"strings"
 )
 
 type ErrorResponse = struct {
 	Message    string `json:"message"`
 	StatusCode int    `json:"statusCode"`
+}
+
+type ErrorResponseArray = struct {
+	Message    []string `json:"message"`
+	StatusCode int      `json:"statusCode"`
 }
 
 func getUrl(route string) string {
@@ -24,7 +30,11 @@ func getUrl(route string) string {
 		helpers.PrintErr("Can't parse API URL")
 		return ""
 	}
-	base.Path = path.Join(base.Path, route)
+	parts := strings.SplitN(route, "?", 2)
+	base.Path = path.Join(base.Path, parts[0])
+	if len(parts) == 2 {
+		base.RawQuery = parts[1]
+	}
 	return base.String()
 }
 
@@ -76,6 +86,10 @@ func Get(route string, auth string) (string, error) {
 	return authRequest(http.MethodGet, route, nil, auth)
 }
 
+func Delete(route string, auth string) (string, error) {
+	return authRequest(http.MethodDelete, route, nil, auth)
+}
+
 func Post(route string, body []byte, auth string) (string, error) {
 	return authRequest(http.MethodPost, route, bytes.NewBuffer(body), auth)
 }
@@ -88,11 +102,21 @@ func ValidateResponse(res string, err error) (string, error) {
 	if err != nil {
 		if res != "" {
 			var resErr ErrorResponse
-			err := json.Unmarshal([]byte(res), &resErr)
-			if err != nil {
-				helpers.PrintErr(res)
+			if json.Unmarshal([]byte(res), &resErr) == nil {
+				helpers.PrintErr(resErr.Message)
+			} else {
+				var resErrArr ErrorResponseArray
+				err := json.Unmarshal([]byte(res), &resErrArr)
+				if err != nil {
+					helpers.PrintErr(res)
+				} else {
+					helpers.PrintErr("Couple errors found:")
+					for _, m := range resErrArr.Message {
+						helpers.PrintErr(fmt.Sprintf("  %s", m))
+					}
+				}
 			}
-			helpers.PrintErr(resErr.Message)
+
 		} else {
 			helpers.PrintErr(err.Error())
 		}

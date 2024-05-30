@@ -69,8 +69,17 @@ func UserUpdate(payload PayloadUser, accessToken string) (*ResponseUser, error) 
 	return ParseResponse[ResponseUser](res)
 }
 
-func UserFind(username string, accessToken string) (*ResponseUser, error) {
+func UserFindByUsername(username string, accessToken string) (*ResponseUser, error) {
 	res, err := ValidateResponse(Get(fmt.Sprintf("/user/find?username=%s", username), accessToken))
+	if err != nil {
+		return nil, err
+	}
+
+	return ParseResponse[ResponseUser](res)
+}
+
+func UserFindById(id string, accessToken string) (*ResponseUser, error) {
+	res, err := ValidateResponse(Get(fmt.Sprintf("/user/find?userId=%s", id), accessToken))
 	if err != nil {
 		return nil, err
 	}

@@ -26,6 +26,13 @@ type ResponseFolderAllowedFileTypes = struct {
 	SherryId   string `json:"sherryId"`
 }
 
+type SherryPermission = struct {
+	SherryPermissionId string `json:"sherryPermissionId"`
+	Role               string `json:"role"`
+	SherryId           string `json:"sherryId"`
+	UserId             string `json:"userId"`
+}
+
 type ResponseFolder = struct {
 	SherryId         string                           `json:"sherryId"`
 	Name             string                           `json:"name"`
@@ -35,6 +42,7 @@ type ResponseFolder = struct {
 	AllowDir         bool                             `json:"allowDir"`
 	AllowedFileTypes []ResponseFolderAllowedFileTypes `json:"allowedFileTypes"`
 	AllowedFileNames []ResponseFolderAllowedFileNames `json:"allowedFileNames"`
+	SherryPermission []SherryPermission               `json:"sherryPermission"`
 }
 
 func FolderCreate(payload PayloadFolder, accessToken string) (*ResponseFolder, error) {
@@ -73,4 +81,13 @@ func FolderGet(id string, accessToken string) (*ResponseFolder, error) {
 	}
 
 	return ParseResponse[ResponseFolder](res)
+}
+
+func FolderDelete(id string, accessToken string) error {
+	_, err := ValidateResponse(Delete(fmt.Sprintf("/sherry/%s", id), accessToken))
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

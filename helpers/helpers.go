@@ -11,8 +11,64 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 )
+
+const (
+	ConsoleReset = 0
+
+	ConsoleFgBlack        = 30
+	ConsoleFgDarkRed      = 31
+	ConsoleFgDarkGreen    = 32
+	ConsoleFgDarkYellow   = 33
+	ConsoleFgDarkBlue     = 34
+	ConsoleFgDarkMagenta  = 35
+	ConsoleFgDarkCyan     = 36
+	ConsoleFgLightGray    = 37
+	ConsoleFgDarkGray     = 90
+	ConsoleFgLightRed     = 91
+	ConsoleFgLightGreen   = 92
+	ConsoleFgLightYellow  = 93
+	ConsoleFgLightBlue    = 94
+	ConsoleFgLightMagenta = 95
+	ConsoleFgLightCyan    = 96
+	ConsoleFgWhite        = 97
+
+	ConsoleBgBlack        = 40
+	ConsoleBgDarkRed      = 41
+	ConsoleBgDarkGreen    = 42
+	ConsoleBgDarkYellow   = 43
+	ConsoleBgDarkBlue     = 44
+	ConsoleBgDarkMagenta  = 45
+	ConsoleBgDarkCyan     = 46
+	ConsoleBgLightGray    = 47
+	ConsoleBgDarkGray     = 100
+	ConsoleBgLightRed     = 101
+	ConsoleBgLightGreen   = 102
+	ConsoleBgLightYellow  = 103
+	ConsoleBgLightBlue    = 104
+	ConsoleBgLightMagenta = 105
+	ConsoleBgLightCyan    = 106
+	ConsoleBgWhite        = 107
+
+	ConsoleBold      = 1
+	ConsoleUnderline = 4
+	ConsoleFramed    = 54
+)
+
+func GetConsoleColor(effects []int) string {
+	var codes []string
+	for _, i := range effects {
+		codes = append(codes, strconv.Itoa(i))
+	}
+
+	return fmt.Sprintf("\033[%sm", strings.Join(codes, ";"))
+}
+
+func WithColor(effects []int, text string) string {
+	return fmt.Sprintf("%s%s%s", GetConsoleColor(effects), text, GetConsoleColor([]int{ConsoleReset}))
+}
 
 func ToTitle(v string) string {
 	return cases.Title(language.AmericanEnglish).String(v)
@@ -131,7 +187,7 @@ func ParseValueArray(name string, value string, itemValidator func(string) error
 	if value == "" {
 		value = def
 	}
-	var values []string
+	values := []string{}
 	for _, v := range separator.Split(value, -1) {
 		if v == "" {
 			continue
@@ -151,6 +207,13 @@ func If[V any](condition bool, yes func() V, no func() V) V {
 	} else {
 		return no()
 	}
+}
+
+func EmptyIfNull[T any](arr []T) []T {
+	if len(arr) == 0 {
+		return []T{}
+	}
+	return arr
 }
 
 func IsExists(path string) bool {
