@@ -436,7 +436,7 @@ func UnwatchSharedFolder(path string, yes bool, force bool) bool {
 
 	conf := config.GetConfig()
 
-	var newWatchers []config.Watcher
+	newWatchers := []config.Watcher{}
 	for _, w := range conf.Watchers {
 		if w.LocalPath != watcher.LocalPath {
 			newWatchers = append(newWatchers, w)

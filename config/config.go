@@ -32,10 +32,11 @@ type Watcher struct {
 }
 
 type Config struct {
-	ApiUrl   string            `json:"apiUrl"`
-	Sources  map[string]Source `json:"sources"`
-	Watchers []Watcher         `json:"watchers"`
-	Webhooks []string          `json:"webhooks"`
+	ApiUrl    string            `json:"apiUrl"`
+	SocketUrl string            `json:"socketUrl"`
+	Sources   map[string]Source `json:"sources"`
+	Watchers  []Watcher         `json:"watchers"`
+	Webhooks  []string          `json:"webhooks"`
 }
 
 type Credentials struct {
