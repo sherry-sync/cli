@@ -6,11 +6,17 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/erikgeiser/promptkit/confirmation"
 	"github.com/erikgeiser/promptkit/textinput"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 )
+
+func ToTitle(v string) string {
+	return cases.Title(language.AmericanEnglish).String(v)
+}
 
 func PrintErr(err string) {
 	_, _ = fmt.Fprintf(os.Stderr, err)
@@ -24,6 +30,28 @@ func PrintMessage(msg string) {
 func PrintJson(data interface{}) {
 	dataJson, _ := json.MarshalIndent(data, "", "  ")
 	fmt.Println(string(dataJson))
+}
+
+func PrintMap(data interface{}, name string, omit []string) {
+	var jsonMap map[string]interface{}
+	v, e := json.Marshal(data)
+	if e != nil {
+		panic(e)
+	}
+	err := json.Unmarshal(v, &jsonMap)
+	if err != nil {
+		panic(e)
+	}
+
+	fmt.Println()
+	fmt.Println(fmt.Sprintf("%s:", name))
+	for k, v := range jsonMap {
+		if Includes(omit, k) {
+			continue
+		}
+		fmt.Println(fmt.Sprintf("  %s: %s", ToTitle(k), v))
+	}
+	fmt.Println()
 }
 
 func Input(name string, value string, validator func(string) error, placeholder string, hide bool) string {
@@ -141,6 +169,15 @@ func Find[T any](ts []T, fn func(T) bool) *T {
 	return nil
 }
 
+func Includes[T comparable](ts []T, item T) bool {
+	for _, t := range ts {
+		if t == item {
+			return true
+		}
+	}
+	return false
+}
+
 func Map[T, U any](ts []T, f func(T) U) []U {
 	us := make([]U, len(ts))
 	for i := range ts {
@@ -151,6 +188,14 @@ func Map[T, U any](ts []T, f func(T) U) []U {
 
 func NormalizePath(path string) string {
 	return strings.ReplaceAll(filepath.Clean(path), "\\", "/")
+}
+
+func PreparePath(path string) string {
+	abs, e := filepath.Abs(path)
+	if e != nil {
+		PrintErr(fmt.Sprintf("Invalid path: %s: %s", e.Error(), path))
+	}
+	return NormalizePath(abs)
 }
 
 func GetPathParts(path string) []string {

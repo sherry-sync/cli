@@ -221,10 +221,10 @@ func CreateSharedFolder(user string, yes bool, path string, name string, setting
 
 	folderInfo := getFolderInfo(yes, path, name, settings)
 
-	path = helpers.NormalizePath(folderInfo.Path)
+	path = helpers.PreparePath(folderInfo.Path)
 
 	for _, w := range config.GetConfig().Watchers {
-		isChild, err := helpers.IsChildPath(path, helpers.NormalizePath(w.LocalPath))
+		isChild, err := helpers.IsChildPath(path, helpers.PreparePath(w.LocalPath))
 		if err != nil {
 			helpers.PrintErr("Error while checking path")
 			return false
@@ -417,11 +417,11 @@ func UpdateSharedFolder(user string, name string, settings map[string]string) bo
 }
 
 func UnwatchSharedFolder(path string, yes bool, force bool) bool {
-	path = helpers.NormalizePath(path)
+	path = helpers.PreparePath(path)
 
 	var watcher *config.Watcher
 	for _, w := range config.GetConfig().Watchers {
-		wPath := helpers.NormalizePath(w.LocalPath)
+		wPath := helpers.PreparePath(w.LocalPath)
 		isChild, err := helpers.IsChildPath(path, wPath)
 		if err != nil {
 			helpers.PrintErr("Error while checking path")

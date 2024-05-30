@@ -52,8 +52,10 @@ func RegisterUser(email string, password string, user string) bool {
 
 	if checkUserExists(info.Email, info.Username) {
 		helpers.PrintErr("User already authorized")
+		return false
 	}
 
+	helpers.PrintMap(info, "Credentials", []string{"password"})
 	helpers.PrintMessage("Creating user...")
 
 	createdUser, err := api.UserRegister(info)

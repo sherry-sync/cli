@@ -17,6 +17,7 @@ var isWindowsPathBanChar = regexp2.MustCompile(`[/<>:"\|?*\x00\x08\x0B\x0C\x0E-\
 var isLinuxPathBanChar = regexp2.MustCompile(`[/\x00]`, 0).MatchString
 var isWindowsPathBanName = regexp2.MustCompile(`^(CON|PRN|AUX|NUL|COM1|COM2|COM3|COM4|COM5|COM6|COM7|COM8|COM9|LPT1|LPT2|LPT3|LPT4|LPT5|LPT6|LPT7|LPT8|LPT9)(\..*)?$`, regexp2.IgnoreCase).MatchString
 var isWindowsPathBanEnd = regexp2.MustCompile(`[. ]$`, 0).MatchString
+var isWindowsDrive = regexp2.MustCompile(`^[a-zA-Z]:$`, 0).MatchString
 
 func match(regex func(s string) (bool, error), input string) bool {
 	match, _ := regex(input)
@@ -60,7 +61,7 @@ func IsPasswordValidator(input string) error {
 }
 
 func IsValidPathPart(input string) error {
-	if input == "" {
+	if input == "" || input == ".." || input == "." {
 		return nil
 	}
 	if match(isWindowsPathBanChar, input) {
@@ -79,12 +80,15 @@ func IsValidPathPart(input string) error {
 }
 
 func IsPathValidator(input string) error {
-	for _, p := range GetPathParts(input) {
+	parts := GetPathParts(input)
+	if match(isWindowsDrive, parts[0]) {
+		parts = parts[1:]
+	}
+	for _, p := range parts {
 		if IsValidPathPart(p) != nil {
 			return textinput.ErrInputValidation
 		}
 	}
-
 	return nil
 }
 
