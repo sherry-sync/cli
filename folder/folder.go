@@ -321,14 +321,19 @@ func GetSharedFolder(user string, yes bool, path string, name string) bool {
 		folderId = folderParams.Name
 	}
 
-	folder, err := api.FolderGet(folderId, credentials.AccessToken)
+	response, err := api.FolderGet(folderId, credentials.AccessToken)
 	if err != nil {
 		return false
 	}
 
-	helpers.PrintJson(folder)
+	helpers.PrintJson(response)
 
-	// TODO: Create watcher with correct permissions
+	conf := config.GetConfig()
+	sourceId := generateSourceId(credentials.UserId, response.SherryId)
+	conf.Sources[sourceId] = responseToSource(response, credentials.UserId)
+	conf.Watchers = append(conf.Watchers, createWatcher(sourceId, credentials.UserId, response.SherryId, folderParams.Path))
+
+	helpers.PrintMessage(fmt.Sprintf("Sherry watching at %s", folderParams.Path))
 
 	return true
 }
