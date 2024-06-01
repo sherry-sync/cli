@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/dustin/go-humanize"
 	"github.com/erikgeiser/promptkit/confirmation"
+	"github.com/erikgeiser/promptkit/selection"
 	"github.com/erikgeiser/promptkit/textinput"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -124,6 +125,24 @@ func Input(name string, value string, validator func(string) error, placeholder 
 		}
 	}
 	if validator(value) != nil {
+		PrintErr(fmt.Sprintf("Invalid %s: %s", name, value))
+		os.Exit(1)
+	}
+	return value
+}
+
+func Select(name string, value string, options []string) string {
+	if value == "" {
+		selector := selection.New(name, options)
+		selector.PageSize = len(options)
+		var e error
+		value, e = selector.RunPrompt()
+		if e != nil {
+			PrintErr(e.Error())
+			os.Exit(1)
+		}
+	}
+	if !Includes(options, value) {
 		PrintErr(fmt.Sprintf("Invalid %s: %s", name, value))
 		os.Exit(1)
 	}

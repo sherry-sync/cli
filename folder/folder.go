@@ -1,6 +1,7 @@
 package folder
 
 import (
+	"errors"
 	"fmt"
 	"github.com/dustin/go-humanize"
 	"github.com/erikgeiser/promptkit/confirmation"
@@ -33,6 +34,12 @@ type Info = struct {
 type Params = struct {
 	Name string `json:"name"`
 	Path string `json:"path"`
+}
+
+type PermissionParams = struct {
+	Target string `json:"target"`
+	Name   string `json:"name"`
+	Role   string `json:"role"`
 }
 
 func prepareSettings(settings map[string]string) map[string]string {
@@ -127,7 +134,7 @@ func getFolderInfo(yes bool, path string, name string, settings map[string]strin
 }
 
 func getFolderParams(yes bool, p string, name string) Params {
-	name = helpers.Input("Folder name in format owner_username:folder_name or id", name, helpers.IsUsernameFolderOrId, "", false)
+	name = helpers.Input("Folder name in format owner_username:folder_name or id", name, helpers.IsUsernameFolderOrIdValidator, "", false)
 
 	if yes && p == "" {
 		p = path.Join(".", helpers.If(helpers.IsUsernameFolder(name) == nil, func() string {
@@ -140,6 +147,18 @@ func getFolderParams(yes bool, p string, name string) Params {
 	return Params{
 		Name: name,
 		Path: helpers.Input("Path", p, helpers.IsPathValidator, "", false),
+	}
+}
+
+func getFolderPermissionsParams(target, name, role string, withRole bool) PermissionParams {
+	return PermissionParams{
+		Name:   helpers.Input("Folder Name", name, helpers.IsWordValidator, "", false),
+		Target: helpers.Input("Target username or id", target, helpers.IsWordOrIdValidator, "", false),
+		Role: strings.ToUpper(helpers.If(withRole, func() string {
+			return helpers.Select("Role", strcase.ToCamel(role), []string{"Read", "Write"})
+		}, func() string {
+			return ""
+		})),
 	}
 }
 
@@ -188,6 +207,17 @@ func createWatcher(sourceId, userId, sherryId string, path string) config.Watche
 
 func generateSourceId(userId, sherryId string) string {
 	return fmt.Sprintf("%s@%s", userId, sherryId)
+}
+
+func getAvailableSource(name string, credentials config.Credentials) *api.ResponseFolder {
+	availableFolders, err := api.FolderGetAvailable(credentials.AccessToken)
+	if err != nil {
+		return nil
+	}
+
+	return helpers.Find(*availableFolders, func(f api.ResponseFolder) bool {
+		return f.Name == name && f.UserId == credentials.UserId
+	})
 }
 
 func CreateSharedFolder(user string, yes bool, path string, name string, settings map[string]string) bool {
@@ -349,14 +379,7 @@ func UpdateSharedFolder(user string, name string, settings map[string]string) bo
 		return false
 	}
 
-	availableFolders, err := api.FolderGetAvailable(credentials.AccessToken)
-	if err != nil {
-		return false
-	}
-
-	source := helpers.Find(*availableFolders, func(f api.ResponseFolder) bool {
-		return f.Name == name && f.UserId == credentials.UserId
-	})
+	source := getAvailableSource(name, *credentials)
 	if source == nil {
 		helpers.PrintErr("Folder is not available or not exists")
 		return false
@@ -523,6 +546,116 @@ func ListSharedFolders(user string, available bool) bool {
 		}
 		helpers.PrintMessage("")
 	}
+
+	return false
+}
+
+func getTargetUser(target string, accessToken string) (*api.ResponseUser, error) {
+	var err error
+	if target == "" {
+		err = errors.New("target user is required")
+		helpers.PrintErr(err.Error())
+		return nil, err
+	}
+
+	if helpers.IsWordValidator(target) == nil {
+		return api.UserFindByUsername(target, accessToken)
+	} else if helpers.IsIdValidator(target) == nil {
+		return api.UserFindById(target, accessToken)
+	} else {
+		panic("Invalid target user")
+	}
+}
+
+func RevokePermission(user, target, name string) bool {
+	params := getFolderPermissionsParams(target, name, "", false)
+
+	credentials := auth.FindUserByUsername(user, true)
+	if credentials == nil {
+		helpers.PrintErr("User not found")
+		return false
+	}
+
+	targetUser, e := getTargetUser(params.Target, credentials.AccessToken)
+	if e != nil {
+		return false
+	}
+
+	if targetUser.UserId == credentials.UserId {
+		helpers.PrintErr("You can't revoke permission to yourself")
+		return false
+	}
+
+	source := getAvailableSource(params.Name, *credentials)
+	if source == nil {
+		helpers.PrintErr("Folder is not available or not exists")
+		return false
+	}
+
+	if api.FolderPermission(source.SherryId, targetUser.UserId, api.PayloadFolderPermission{
+		Action: api.PermissionActionRefuse,
+		Role:   api.PermissionRoleOwner, // Required by api, but will be ignored
+	}, credentials.AccessToken) != nil {
+		return false
+	}
+
+	helpers.PrintMessage(fmt.Sprintf("Permission revoked from %s", auth.GetUserString(config.Credentials{
+		UserId:   targetUser.UserId,
+		Username: targetUser.Username,
+		Email:    targetUser.Email,
+	})))
+
+	return false
+}
+
+func GrantPermission(user, target, name, role string) bool {
+	params := getFolderPermissionsParams(target, name, role, true)
+
+	credentials := auth.FindUserByUsername(user, true)
+	if credentials == nil {
+		helpers.PrintErr("User not found")
+		return false
+	}
+
+	targetUser, e := getTargetUser(params.Target, credentials.AccessToken)
+	if e != nil {
+		return false
+	}
+
+	if targetUser.UserId == credentials.UserId {
+		helpers.PrintErr("You can't grant permission to yourself")
+		return false
+	}
+
+	source := getAvailableSource(params.Name, *credentials)
+	if source == nil {
+		helpers.PrintErr("Folder is not available or not exists")
+		return false
+	}
+
+	if helpers.Find(source.SherryPermission, func(permission api.SherryPermission) bool {
+		return permission.UserId == targetUser.UserId
+	}) != nil {
+		if api.FolderPermission(source.SherryId, targetUser.UserId, api.PayloadFolderPermission{
+			Action: api.PermissionActionRefuse,
+			Role:   api.PermissionRoleOwner, // Required by api, but will be ignored
+		}, credentials.AccessToken) != nil {
+			return false
+		}
+	}
+
+	if api.FolderPermission(source.SherryId, targetUser.UserId, api.PayloadFolderPermission{
+		Role:   params.Role,
+		Action: api.PermissionActionGrant,
+	}, credentials.AccessToken) != nil {
+		return false
+	}
+
+	helpers.PrintMessage(fmt.Sprintf("Permission granted to %s: %s", auth.GetUserString(config.Credentials{
+		UserId:   targetUser.UserId,
+		Username: targetUser.Username,
+		Email:    targetUser.Email,
+	}), params.Role))
 
 	return false
 }

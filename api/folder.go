@@ -14,6 +14,26 @@ type PayloadFolder = struct {
 	AllowedFileTypes []string `json:"allowedFileTypes"`
 }
 
+type PayloadFolderPermissionRole = string
+
+const (
+	PermissionRoleOwner PayloadFolderPermissionRole = "OWNER"
+	PermissionRoleRead  PayloadFolderPermissionRole = "READ"
+	PermissionRoleWrite PayloadFolderPermissionRole = "WRITE"
+)
+
+type PayloadFolderPermissionAction = string
+
+const (
+	PermissionActionGrant  PayloadFolderPermissionAction = "GRANT"
+	PermissionActionRefuse PayloadFolderPermissionAction = "REFUSE"
+)
+
+type PayloadFolderPermission = struct {
+	Role   PayloadFolderPermissionRole   `json:"role"`
+	Action PayloadFolderPermissionAction `json:"action"`
+}
+
 type ResponseFolderAllowedFileNames = struct {
 	FileNameId string `json:"fileNameId"`
 	Name       string `json:"name"`
@@ -85,6 +105,16 @@ func FolderGet(id string, accessToken string) (*ResponseFolder, error) {
 
 func FolderDelete(id string, accessToken string) error {
 	_, err := ValidateResponse(Delete(fmt.Sprintf("/sherry/%s", id), accessToken))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func FolderPermission(folderId, userId string, payload PayloadFolderPermission, accessToken string) error {
+	body, _ := json.Marshal(payload)
+	_, err := ValidateResponse(Patch(fmt.Sprintf("/sherry/%s/users/%s/permission", folderId, userId), body, accessToken))
 	if err != nil {
 		return err
 	}

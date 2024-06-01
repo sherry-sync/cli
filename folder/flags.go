@@ -10,7 +10,7 @@ type Options struct {
 	Get         GetOptions        `command:"get" description:"Get shared folder"`
 	Show        ShowOptions       `command:"show" description:"Display shared folder sharing info"`
 	Update      UpdateOptions     `command:"update" description:"Set shared folder settings"`
-	Permissions PermissionOptions `command:"permissions" description:"Manage shared folder access"`
+	Permissions PermissionOptions `command:"permission" description:"Manage shared folder access"`
 	List        ListOptions       `command:"list" description:"List folders"`
 	Unwatch     UnwatchOptions    `command:"unwatch" description:"Unwatch folder"`
 }
@@ -28,13 +28,22 @@ type ListOptions struct {
 	Available bool   `long:"available" short:"a" description:"Show all available folders"`
 }
 
+type PermissionGrantOptions struct {
+	User   string `long:"user" short:"u" description:"Use specific user profile for operation (Default profile will be used if no specified)"`
+	Target string `long:"target" short:"t" description:"Username or id of user to manage access for"`
+	Role   string `long:"role" description:"Permission role (read/write)"`
+	Name   string `long:"name" short:"n" description:"Shared folder name"`
+}
+
+type PermissionRevokeOptions struct {
+	User   string `long:"user" short:"u" description:"Use specific user profile for operation (Default profile will be used if no specified)"`
+	Target string `long:"target" short:"t" description:"Username or id of user to manage access for"`
+	Name   string `long:"name" short:"n" description:"Shared folder name"`
+}
+
 type PermissionOptions struct {
-	User     string `long:"user" short:"u" description:"Use specific user profile for operation (Default profile will be used if no specified)"`
-	Target   string `long:"target" short:"t" description:"Username or id of user to manage access for"`
-	ReadOnly string `long:"readOnly" description:"Is target read only (Yes/No, True/False, 1/0)"`
-	Args     struct {
-		Name string `positional-arg-name:"folder"  description:"Shared folder name"`
-	} `positional-args:"yes" required:"yes" description:"Shared folder name"`
+	Grant  PermissionGrantOptions  `command:"grant" description:"Grant access to shared folder"`
+	Revoke PermissionRevokeOptions `command:"revoke" description:"Revoke access from shared folder"`
 }
 
 type CreateOptions struct {
@@ -88,6 +97,15 @@ func ApplyCommands(cmd *flag.Command, options Options) {
 			return UnwatchSharedFolder(string(options.Unwatch.Args.Path), options.Unwatch.Yes, options.Unwatch.Force)
 		case "list":
 			return ListSharedFolders(options.List.User, options.List.Available)
+		case "permission":
+			switch cmd.Active.Active.Active.Name {
+			case "grant":
+				return GrantPermission(options.Permissions.Grant.User, options.Permissions.Grant.Target, options.Permissions.Grant.Name, options.Permissions.Grant.Role)
+			case "revoke":
+				return RevokePermission(options.Permissions.Revoke.User, options.Permissions.Revoke.Target, options.Permissions.Revoke.Name)
+			default:
+				return false
+			}
 		default:
 			return false
 		}

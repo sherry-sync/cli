@@ -25,21 +25,35 @@ func match(regex func(s string) (bool, error), input string) bool {
 }
 
 func IsWordValidator(input string) error {
-	if input != "" && !match(isWordRegex, input) {
+	if !match(isWordRegex, input) {
 		return textinput.ErrInputValidation
 	}
 	return nil
 }
 
 func IsUsernameFolder(input string) error {
-	if input != "" && !match(isUsernameFolder, input) {
+	if !match(isUsernameFolder, input) {
 		return textinput.ErrInputValidation
 	}
 	return nil
 }
 
-func IsUsernameFolderOrId(input string) error {
-	if input != "" && (!match(isIdRegex, input) || !match(isUsernameFolder, input)) {
+func IsIdValidator(input string) error {
+	if !match(isIdRegex, input) {
+		return textinput.ErrInputValidation
+	}
+	return nil
+}
+
+func IsWordOrIdValidator(input string) error {
+	if !match(isIdRegex, input) && !match(isWordRegex, input) {
+		return textinput.ErrInputValidation
+	}
+	return nil
+}
+
+func IsUsernameFolderOrIdValidator(input string) error {
+	if !match(isIdRegex, input) && !match(isUsernameFolder, input) {
 		return textinput.ErrInputValidation
 	}
 	return nil
@@ -54,7 +68,7 @@ func IsEmailValidator(input string) error {
 }
 
 func IsPasswordValidator(input string) error {
-	if input != "" && !match(isPasswordRegex, input) {
+	if !match(isPasswordRegex, input) {
 		return textinput.ErrInputValidation
 	}
 	return nil
@@ -80,6 +94,9 @@ func IsValidPathPart(input string) error {
 }
 
 func IsPathValidator(input string) error {
+	if input == "" {
+		return textinput.ErrInputValidation
+	}
 	parts := GetPathParts(input)
 	if match(isWindowsDrive, parts[0]) {
 		parts = parts[1:]
