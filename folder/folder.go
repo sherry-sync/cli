@@ -638,17 +638,6 @@ func GrantPermission(user, target, name, role string) bool {
 		return false
 	}
 
-	if helpers.Find(source.SherryPermission, func(permission api.SherryPermission) bool {
-		return permission.UserId == targetUser.UserId
-	}) != nil {
-		if api.FolderPermission(source.SherryId, targetUser.UserId, api.PayloadFolderPermission{
-			Action: api.PermissionActionRefuse,
-			Role:   api.PermissionRoleOwner, // Required by api, but will be ignored
-		}, credentials.AccessToken) != nil {
-			return false
-		}
-	}
-
 	if api.FolderPermission(source.SherryId, targetUser.UserId, api.PayloadFolderPermission{
 		Role:   params.Role,
 		Action: api.PermissionActionGrant,
