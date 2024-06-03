@@ -45,6 +45,7 @@ type Credentials struct {
 	Username     string `json:"username"`
 	AccessToken  string `json:"accessToken"`
 	RefreshToken string `json:"refreshToken"`
+	ExpiresIn    int    `json:"expiresIn"`
 }
 
 type AuthorizationConfig struct {

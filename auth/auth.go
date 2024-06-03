@@ -88,6 +88,7 @@ func LoginUser(email string, password string) bool {
 		Username:     authResponse.Username,
 		AccessToken:  authResponse.AccessToken,
 		RefreshToken: authResponse.RefreshToken,
+		ExpiresIn:    authResponse.ExpiresIn,
 	}
 
 	helpers.PrintMessage("User was successfully logged in")
