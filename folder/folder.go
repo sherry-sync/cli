@@ -227,6 +227,10 @@ func CreateSharedFolder(user string, yes bool, path string, name string, setting
 		helpers.PrintErr("User not found")
 		return false
 	}
+	if credentials.Expired {
+		helpers.PrintErr("Your session has expired")
+		return false
+	}
 
 	folderInfo := getFolderInfo(yes, path, name, settings)
 
@@ -285,6 +289,10 @@ func GetSharedFolder(user string, yes bool, path string, name string) bool {
 
 	if credentials == nil {
 		helpers.PrintErr("User not found")
+		return false
+	}
+	if credentials.Expired {
+		helpers.PrintErr("Your session has expired")
 		return false
 	}
 
@@ -346,16 +354,22 @@ func DisplaySharedFolder(user string, name string) bool {
 		helpers.PrintErr("User not found")
 		return false
 	}
+	if credentials.Expired {
+		helpers.PrintErr("Your session has expired")
+		return false
+	}
 
 	availableFolders, err := api.FolderGetAvailable(credentials.AccessToken)
 	if err != nil {
 		return false
 	}
 
+	isEmpty := true
 	for _, s := range *availableFolders {
 		if s.Name != name {
 			continue
 		}
+		isEmpty = false
 		source := responseToSource(&s, credentials.UserId)
 		owner, e := api.UserFindById(s.UserId, credentials.AccessToken)
 		if e != nil {
@@ -372,6 +386,12 @@ func DisplaySharedFolder(user string, name string) bool {
 			helpers.WithColor([]int{helpers.ConsoleFgDarkGreen, helpers.ConsoleUnderline}, fmt.Sprintf("shr folder get %s", source.Id)),
 		))
 	}
+	if isEmpty {
+		helpers.PrintErr(fmt.Sprintf(
+			"Folder %s is not available or not exists",
+			helpers.WithColor([]int{helpers.ConsoleFgDarkRed}, name),
+		))
+	}
 
 	return false
 }
@@ -381,6 +401,10 @@ func UpdateSharedFolder(user string, name string, settings map[string]string) bo
 	credentials := auth.FindUserByUsername(user, true)
 	if credentials == nil {
 		helpers.PrintErr("User not found")
+		return false
+	}
+	if credentials.Expired {
+		helpers.PrintErr("Your session has expired")
 		return false
 	}
 
@@ -416,7 +440,7 @@ func UpdateSharedFolder(user string, name string, settings map[string]string) bo
 
 	conf := config.GetConfig()
 	estSource := responseToSource(response, credentials.UserId)
-	for _, s := range conf.Sources {
+	for key, s := range conf.Sources {
 		if s.Id != source.SherryId {
 			continue
 		}
@@ -426,6 +450,7 @@ func UpdateSharedFolder(user string, name string, settings map[string]string) bo
 		s.MaxDirSize = estSource.MaxDirSize
 		s.AllowedFileNames = estSource.AllowedFileNames
 		s.AllowedFileTypes = estSource.AllowedFileTypes
+		conf.Sources[key] = s
 	}
 
 	helpers.PrintMessage(fmt.Sprintf("Folder was updated:"))
@@ -580,6 +605,10 @@ func RevokePermission(user, target, name string) bool {
 		helpers.PrintErr("User not found")
 		return false
 	}
+	if credentials.Expired {
+		helpers.PrintErr("Your session has expired")
+		return false
+	}
 
 	targetUser, e := getTargetUser(params.Target, credentials.AccessToken)
 	if e != nil {
@@ -619,6 +648,10 @@ func GrantPermission(user, target, name, role string) bool {
 	credentials := auth.FindUserByUsername(user, true)
 	if credentials == nil {
 		helpers.PrintErr("User not found")
+		return false
+	}
+	if credentials.Expired {
+		helpers.PrintErr("Your session has expired")
 		return false
 	}
 
