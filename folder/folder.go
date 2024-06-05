@@ -297,8 +297,9 @@ func GetSharedFolder(user string, yes bool, path string, name string) bool {
 	}
 
 	folderParams := getFolderParams(yes, path, name)
+	path = helpers.PreparePath(folderParams.Path)
 
-	if helpers.IsExists(folderParams.Path) {
+	if helpers.IsExists(path) {
 		helpers.PrintErr("Directory already exists")
 		return false
 	}
@@ -339,9 +340,9 @@ func GetSharedFolder(user string, yes bool, path string, name string) bool {
 	conf := config.GetConfig()
 	sourceId := generateSourceId(credentials.UserId, response.SherryId)
 	conf.Sources[sourceId] = responseToSource(response, credentials.UserId)
-	conf.Watchers = append(conf.Watchers, createWatcher(sourceId, credentials.UserId, response.SherryId, folderParams.Path))
+	conf.Watchers = append(conf.Watchers, createWatcher(sourceId, credentials.UserId, response.SherryId, path))
 
-	helpers.PrintMessage(fmt.Sprintf("Sherry watching at %s", folderParams.Path))
+	helpers.PrintMessage(fmt.Sprintf("Sherry watching at %s", path))
 
 	return true
 }
@@ -470,15 +471,18 @@ func UnwatchSharedFolder(path string, yes bool, force bool) bool {
 			helpers.PrintErr("Error while checking path")
 			return false
 		}
-		if isChild && wPath != path {
-			if yes || helpers.Confirmation("Looks like it is not th root of shared directory, unwatch anyway?", "", confirmation.No) {
-				watcher = &w
+		if isChild {
+			if wPath != path {
+				if yes || helpers.Confirmation("Looks like it is not th root of shared directory, unwatch anyway?", "", confirmation.No) {
+					watcher = &w
+				} else {
+					helpers.PrintErr("Aborting...")
+					return false
+				}
 			} else {
-				helpers.PrintErr("Aborting...")
-				return false
+				watcher = &w
 			}
-		} else {
-			watcher = &w
+			break
 		}
 	}
 
