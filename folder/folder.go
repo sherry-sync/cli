@@ -195,13 +195,13 @@ func generateHashId(userId, sherryId string) string {
 	return fmt.Sprintf("%s_%s_%d", userId, sherryId, time.Now().Unix())
 }
 
-func createWatcher(sourceId, userId, sherryId string, path string) config.Watcher {
+func createWatcher(sourceId, userId, sherryId string, path string, complete bool) config.Watcher {
 	return config.Watcher{
 		Source:    sourceId,
 		LocalPath: path,
 		HashesId:  generateHashId(userId, sherryId),
 		UserId:    userId,
-		Complete:  false,
+		Complete:  complete,
 	}
 }
 
@@ -277,7 +277,7 @@ func CreateSharedFolder(user string, yes bool, path string, name string, setting
 	conf := config.GetConfig()
 	sourceId := generateSourceId(credentials.UserId, response.SherryId)
 	conf.Sources[sourceId] = responseToSource(response, credentials.UserId)
-	conf.Watchers = append(conf.Watchers, createWatcher(sourceId, credentials.UserId, response.SherryId, path))
+	conf.Watchers = append(conf.Watchers, createWatcher(sourceId, credentials.UserId, response.SherryId, path, false))
 
 	helpers.PrintMessage(fmt.Sprintf("Sherry is created and watching at %s", path))
 
@@ -340,7 +340,16 @@ func GetSharedFolder(user string, yes bool, path string, name string) bool {
 	conf := config.GetConfig()
 	sourceId := generateSourceId(credentials.UserId, response.SherryId)
 	conf.Sources[sourceId] = responseToSource(response, credentials.UserId)
-	conf.Watchers = append(conf.Watchers, createWatcher(sourceId, credentials.UserId, response.SherryId, path))
+	conf.Watchers = append(conf.Watchers, createWatcher(sourceId, credentials.UserId, response.SherryId, path, true))
+
+	helpers.PrintMessage(fmt.Sprintf("Creating directory at %s", path))
+	err = os.MkdirAll(path, os.ModePerm)
+	if err != nil {
+		helpers.PrintErr(err.Error())
+		return false
+	}
+	// Fetch folder state
+	// Download files
 
 	helpers.PrintMessage(fmt.Sprintf("Sherry watching at %s", path))
 
