@@ -48,7 +48,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ needs.create_release.outputs.upload_url }}
-        asset_path: .shr.exe
+        asset_path: shr.exe
         asset_name: shr.exe
         asset_content_type: application/vnd.microsoft.portable-executable
 
@@ -71,7 +71,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: .shr
+          asset_path: shr
           asset_name: shr-linux
           asset_content_type: application/x-elf
 
@@ -94,6 +94,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: .shr
+          asset_path: shr
           asset_name: shr-macos
           asset_content_type: application/x-elf
