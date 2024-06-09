@@ -26,11 +26,15 @@ func getPidPath() string {
 	return helpers.PreparePath(path.Join(config.GetConfigPath(), "pid"))
 }
 
-func StartService() bool {
+func StartService(yes bool) bool {
 	pid, e := os.ReadFile(getPidPath())
 	if e == nil && string(pid) != "" {
-		helpers.PrintErr(fmt.Sprintf("Service is already started, PID: %s", pid))
-		return false
+		if yes {
+			StopService()
+		} else {
+			helpers.PrintErr(fmt.Sprintf("Service is already started, PID: %s", pid))
+			return false
+		}
 	}
 
 	servicePath := getServicePath()
