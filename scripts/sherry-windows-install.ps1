@@ -1,7 +1,7 @@
 #Requires -RunAsAdministrator
 
 $CUR_PATH = Get-Location
-$APP_DIR = .sherry
+$APP_DIR = ".sherry"
 $CONFIG_PATH = "$HOME\$APP_DIR"
 $BIN_PATH = "$CONFIG_PATH\bin"
 
