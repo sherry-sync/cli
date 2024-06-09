@@ -58,13 +58,18 @@ var configPath = ""
 var globalConfig *Config = nil
 var globalAuthConfig *AuthorizationConfig = nil
 
-func GetConfigPath(overwritePath string) string {
+func ResolveConfigPath(overwritePath string) string {
 	configPath := overwritePath
 	if configPath == "" {
-		home, _ := os.UserHomeDir()
-		configPath = fmt.Sprintf(path.Join(home, constants.ConfigDir))
+		envPath := os.Getenv(constants.EnvConfigDir)
+		if envPath == "" {
+			home, _ := os.UserHomeDir()
+			configPath = fmt.Sprintf(path.Join(home, constants.ConfigDir))
+		} else {
+			configPath = envPath
+		}
 	}
-	return configPath
+	return helpers.PreparePath(configPath)
 }
 
 func SetConfig(c *Config) {
@@ -110,7 +115,7 @@ func ReadAuthConfig() *AuthorizationConfig {
 }
 
 func SetupConfig(overwritePath string) error {
-	configPath = GetConfigPath(overwritePath)
+	configPath = ResolveConfigPath(overwritePath)
 
 	c := ReadConfig()
 	if c == nil {
@@ -125,6 +130,10 @@ func SetupConfig(overwritePath string) error {
 	SetAuthConfig(auth)
 
 	return nil
+}
+
+func GetConfigPath() string {
+	return configPath
 }
 
 func GetConfig() *Config {

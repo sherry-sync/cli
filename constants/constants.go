@@ -1,5 +1,9 @@
 package constants
 
+const EnvConfigDir = "SHERRY_CONFIG_PATH"
+const AnvApiUrl = "SHERRY_API_URL"
+const EnvSocketUrl = "SHERRY_SOCKET_URL"
+
 const ConfigDir = ".sherry"
 const ConfigFile = "config.json"
 const AuthConfigFile = "auth.json"
