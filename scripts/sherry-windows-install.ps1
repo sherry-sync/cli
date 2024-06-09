@@ -9,12 +9,11 @@ Set-Location $HOME
 mkdir $APP_DIR
 Set-Location $CONFIG_PATH
 
-Remove-Item -Recurse -Force bin
-mkdir bin
-Set-Location bin
-Invoke-WebRequest https://github.com/sherry-sync/cli/releases/latest/download/shr.exe -OutFile shr.exe
-Invoke-WebRequest https://github.com/sherry-sync/cli/releases/latest/download/sherry-windows-install.ps1 -OutFile shr-update.ps1
-Invoke-WebRequest https://github.com/sherry-sync/demon/releases/latest/download/sherry-demon.exe -OutFile sherry-demon.exe
+Remove-Item -Recurse -Force $BIN_PATH
+New-Item -ItemType Directory -Path $BIN_PATH -Force
+Invoke-WebRequest https://github.com/sherry-sync/cli/releases/latest/download/shr.exe -OutFile "$BIN_PATH\shr.exe"
+Invoke-WebRequest https://github.com/sherry-sync/cli/releases/latest/download/sherry-windows-install.ps1 -OutFile "$BIN_PATH\shr-update.ps1"
+Invoke-WebRequest https://github.com/sherry-sync/demon/releases/latest/download/sherry-demon.exe -OutFile "$BIN_PATH\sherry-demon.exe"
 if ([Environment]::GetEnvironmentVariable("Path", [EnvironmentVariableTarget]::User) -split ';' -notcontains $BIN_PATH)
 {
     [Environment]::SetEnvironmentVariable(
