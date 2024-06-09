@@ -52,4 +52,8 @@ if (-Not (Get-ItemProperty -Path $STARTUP_PATH -Name $STARTUP_NAME))
 }
 
 RefreshEnv
+
+powershell.exe -Command "$BIN_PATH\shr.exe" -c $CONFIG_PATH service stop
+(Start-Process -FilePath "$BIN_PATH\sherry-demon.exe" -NoNewWindow -PassThru -WorkingDirectory $BIN_PATH -ArgumentList @("-c", $CONFIG_PATH, "-s")).Id > "$CONFIG_PATH/pid"
+
 Set-Location $CUR_PATH
