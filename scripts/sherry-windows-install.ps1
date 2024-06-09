@@ -35,7 +35,7 @@ $STARTUP_NAME = "sherry-demon"
 $STARTUP_SCRIPT = '
 $JOB_NAME = "SherryStartup"
 Start-Job -Name $JOB_NAME -ScriptBlock {
-    $TEMP = [System.Environment]::GetEnvironmentVariable("TEMP", ' + $TARGET + ')
+    $TEMP = [System.Environment]::GetEnvironmentVariable("TEMP", [System.EnvironmentVariableTarget]::User)
     ' + $BIN_PATH + '\shr.exe -c "' + $CONFIG_PATH + '" service start >> "$TEMP/SherryStartup.txt"
 }
 Wait-Job -Name $JOB_NAME
