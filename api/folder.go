@@ -3,6 +3,10 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"time"
 )
 
 type PayloadFolder = struct {
@@ -65,6 +69,25 @@ type ResponseFolder = struct {
 	SherryPermission []SherryPermission               `json:"sherryPermission"`
 }
 
+type FileType = string
+
+const (
+	Dir  FileType = "DIR"
+	File FileType = "FILE"
+)
+
+type FileResponse struct {
+	SherryFileID string    `json:"sherryFileId"`
+	SherryID     string    `json:"sherryId"`
+	Path         string    `json:"path"`
+	OldPath      string    `json:"oldPath"`
+	Hash         string    `json:"hash"`
+	Size         uint64    `json:"size"`
+	CreatedAt    time.Time `json:"createdAt"`
+	UpdatedAt    time.Time `json:"updatedAt"`
+	FileType     FileType  `json:"fileType"`
+}
+
 func FolderCreate(payload PayloadFolder, accessToken string) (*ResponseFolder, error) {
 	body, _ := json.Marshal(payload)
 	res, err := ValidateResponse(Post("/sherry", body, accessToken))
@@ -120,4 +143,34 @@ func FolderPermission(folderId, userId string, payload PayloadFolderPermission, 
 	}
 
 	return nil
+}
+
+func FolderFiles(id string, accessToken string) (*[]FileResponse, error) {
+	res, err := ValidateResponse(Get(fmt.Sprintf("/file/%s", id), accessToken))
+	if err != nil {
+		return nil, err
+	}
+
+	return ParseResponse[[]FileResponse](res)
+}
+
+func FolderFileDownload(id, filePath string, accessToken string, dst string) error {
+	req, err := http.NewRequest(http.MethodGet, getUrl(fmt.Sprintf("/file/instance/%s?path=%s", id, filePath)), nil)
+	if err != nil {
+		return err
+	}
+
+	// Set the Authorization header
+	req.Header.Set("Authorization", fmt.Sprint("Bearer ", accessToken))
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	out, err := os.Create(dst)
+	_, err = io.Copy(out, res.Body)
+	defer out.Close()
+	defer res.Body.Close()
+	return err
 }
