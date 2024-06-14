@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"time"
 )
 
 type PayloadFolder = struct {
@@ -77,15 +76,15 @@ const (
 )
 
 type FileResponse struct {
-	SherryFileID string    `json:"sherryFileId"`
-	SherryID     string    `json:"sherryId"`
-	Path         string    `json:"path"`
-	OldPath      string    `json:"oldPath"`
-	Hash         string    `json:"hash"`
-	Size         uint64    `json:"size"`
-	CreatedAt    time.Time `json:"createdAt"`
-	UpdatedAt    time.Time `json:"updatedAt"`
-	FileType     FileType  `json:"fileType"`
+	SherryFileID string   `json:"sherryFileId"`
+	SherryID     string   `json:"sherryId"`
+	Path         string   `json:"path"`
+	OldPath      string   `json:"oldPath"`
+	Hash         string   `json:"hash"`
+	Size         uint64   `json:"size"`
+	CreatedAt    uint64   `json:"createdAt"`
+	UpdatedAt    uint64   `json:"updatedAt"`
+	FileType     FileType `json:"fileType"`
 }
 
 func FolderCreate(payload PayloadFolder, accessToken string) (*ResponseFolder, error) {
@@ -169,8 +168,16 @@ func FolderFileDownload(id, filePath string, accessToken string, dst string) err
 	}
 
 	out, err := os.Create(dst)
-	_, err = io.Copy(out, res.Body)
+	if err != nil {
+		return err
+	}
 	defer out.Close()
+
+	_, err = io.Copy(out, res.Body)
+	if err != nil {
+		return err
+	}
 	defer res.Body.Close()
+
 	return err
 }

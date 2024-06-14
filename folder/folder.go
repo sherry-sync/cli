@@ -284,7 +284,7 @@ func CreateSharedFolder(user string, yes bool, path string, name string, setting
 	return true
 }
 
-func GetSharedFolder(user string, yes bool, path string, name string) bool {
+func GetSharedFolder(user string, yes bool, localPath string, name string) bool {
 	credentials := auth.FindUserByUsername(user, true)
 
 	if credentials == nil {
@@ -296,10 +296,10 @@ func GetSharedFolder(user string, yes bool, path string, name string) bool {
 		return false
 	}
 
-	folderParams := getFolderParams(yes, path, name)
-	path = helpers.PreparePath(folderParams.Path)
+	folderParams := getFolderParams(yes, localPath, name)
+	localPath = helpers.PreparePath(folderParams.Path)
 
-	if helpers.IsExists(path) {
+	if helpers.IsExists(localPath) {
 		helpers.PrintErr("Directory already exists")
 		return false
 	}
@@ -335,23 +335,35 @@ func GetSharedFolder(user string, yes bool, path string, name string) bool {
 		return false
 	}
 
+	files, err := api.FolderFiles(folderId, credentials.AccessToken)
+	if err != nil {
+		return false
+	}
+
 	helpers.PrintJson(response)
 
 	conf := config.GetConfig()
 	sourceId := generateSourceId(credentials.UserId, response.SherryId)
 	conf.Sources[sourceId] = responseToSource(response, credentials.UserId)
-	conf.Watchers = append(conf.Watchers, createWatcher(sourceId, credentials.UserId, response.SherryId, path, true))
+	watcher := createWatcher(sourceId, credentials.UserId, response.SherryId, localPath, false)
+	conf.Watchers = append(conf.Watchers, watcher)
 
-	helpers.PrintMessage(fmt.Sprintf("Creating directory at %s", path))
-	err = os.MkdirAll(path, os.ModePerm)
+	helpers.PrintMessage(fmt.Sprintf("Creating directory at %s", localPath))
+	err = os.MkdirAll(localPath, os.ModePerm)
 	if err != nil {
 		helpers.PrintErr(err.Error())
 		return false
 	}
-	// Fetch folder state
-	// Download files
 
-	helpers.PrintMessage(fmt.Sprintf("Sherry watching at %s", path))
+	for _, file := range *files {
+		err = api.FolderFileDownload(folderId, file.Path, credentials.AccessToken, path.Join(localPath, file.Path))
+		if err != nil {
+			helpers.PrintErr(err.Error())
+			continue
+		}
+	}
+
+	helpers.PrintMessage(fmt.Sprintf("Sherry watching at %s", localPath))
 
 	return true
 }
