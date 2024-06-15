@@ -26,8 +26,8 @@ if ([Environment]::GetEnvironmentVariable("Path", [EnvironmentVariableTarget]::U
 $TARGET = [System.EnvironmentVariableTarget]::User
 
 [System.Environment]::SetEnvironmentVariable("SHERRY_CONFIG_PATH", $CONFIG_PATH, $TARGET)
-[System.Environment]::SetEnvironmentVariable("SHERRY_API_URL", "http://localhost:3000", $TARGET)
-[System.Environment]::SetEnvironmentVariable("SHERRY_SOCKET_URL", "http://localhost:3001", $TARGET)
+[System.Environment]::SetEnvironmentVariable("SHERRY_API_URL", "http://104.248.132.128:3000", $TARGET)
+[System.Environment]::SetEnvironmentVariable("SHERRY_SOCKET_URL", "http://104.248.132.128:3001", $TARGET)
 
 $STARTUP_PATH = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
 $STARTUP_NAME = "sherry-demon"
