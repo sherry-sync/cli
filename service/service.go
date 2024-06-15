@@ -26,6 +26,26 @@ func getPidPath() string {
 	return helpers.PreparePath(path.Join(config.GetConfigPath(), "pid"))
 }
 
+func getWindowsStartServiceCommand() []string {
+	ps, _ := exec.LookPath("powershell.exe")
+	servicePath := getServicePath()
+	configPath := config.GetConfigPath()
+	return []string{
+		ps,
+		"-NoProfile", "-NonInteractive", "-Command",
+		fmt.Sprintf(`
+$JOB_NAME = "SherryManualStart"
+Start-Job -Name $JOB_NAME -ScriptBlock {
+	(Start-Process -FilePath "%s" -NoNewWindow -PassThru -WorkingDirectory "%s" -ArgumentList @("-c", "%s", "-s")).Id
+} | out-null
+echo (Receive-Job -AutoRemoveJob -Wait $JOB_NAME)
+exit
+`,
+			servicePath, configPath, configPath,
+		),
+	}
+}
+
 func StartService(yes bool) bool {
 	pid, e := os.ReadFile(getPidPath())
 	if e == nil && string(pid) != "" {
@@ -38,19 +58,13 @@ func StartService(yes bool) bool {
 	}
 
 	servicePath := getServicePath()
-	configPath := config.GetConfigPath()
 
 	helpers.PrintMessage(fmt.Sprintf("Starting service at %s", servicePath))
 
 	var args []string
 	switch runtime.GOOS {
 	case "windows":
-		ps, _ := exec.LookPath("powershell.exe")
-		args = []string{
-			ps,
-			"-NoProfile", "-NonInteractive", "-Command",
-			fmt.Sprintf(`(Start-Process -FilePath "%s" -NoNewWindow -PassThru -WorkingDirectory "%s" -ArgumentList @("-c", "%s", "-s")).Id`, servicePath, path.Join(config.GetConfigPath(), "bin"), configPath),
-		}
+		args = getWindowsStartServiceCommand()
 	default:
 		helpers.PrintErr("not support")
 		return false
