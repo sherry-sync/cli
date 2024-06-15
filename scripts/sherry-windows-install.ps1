@@ -20,11 +20,13 @@ Invoke-WebRequest https://github.com/sherry-sync/cli/releases/latest/download/sh
 Invoke-WebRequest https://github.com/sherry-sync/demon/releases/latest/download/sherry-demon.exe -OutFile "$BIN_PATH\sherry-demon.exe"
 
 Write-Output "Updating PATH..."
-if ([Environment]::GetEnvironmentVariable("Path", [EnvironmentVariableTarget]::User) -split ';' -notcontains $BIN_PATH)
+$PATH_ITEMS = [Environment]::GetEnvironmentVariable("Path", [EnvironmentVariableTarget]::User) -split ';'
+if ($PATH_ITEMS -notcontains $BIN_PATH)
 {
+    $PATH_ITEMS += $BIN_PATH
     [Environment]::SetEnvironmentVariable(
             "Path",
-            [Environment]::GetEnvironmentVariable("Path", [EnvironmentVariableTarget]::User) + $BIN_PATH,
+            $PATH_ITEMS -join ";",
             [EnvironmentVariableTarget]::User
     )
 }
